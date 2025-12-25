@@ -40,7 +40,9 @@ public sealed class EqualsValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must be equal");
+            result.Message.Should().Contain("Values must be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("eq");
         }
         else
@@ -73,7 +75,9 @@ public sealed class EqualsValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must be equal");
+            result.Message.Should().Contain("Values must be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("eq");
         }
     }
@@ -124,7 +128,9 @@ public sealed class EqualsValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Boolean values must be equal");
+            result.Message.Should().Contain("Boolean values must be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -148,7 +154,9 @@ public sealed class EqualsValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must be equal");
+            result.Message.Should().Contain("Values must be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -168,7 +176,9 @@ public sealed class EqualsValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Values must be equal");
+        result.Message.Should().Contain("Values must be equal");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("eq");
     }
 
@@ -193,7 +203,9 @@ public sealed class EqualsValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must be equal");
+            result.Message.Should().Contain("Values must be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -213,7 +225,9 @@ public sealed class EqualsValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom error message for equality");
+        result.Message.Should().Contain("Custom error message for equality");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("eq");
         result.Value.Should().Be("actual");
     }

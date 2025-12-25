@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
@@ -14,14 +15,15 @@ public sealed class RuleEngineTests : IDisposable
     public RuleEngineTests()
     {
         var configLogger = NullLogger<ConfigLoader>.Instance;
-        var configLoader = new ConfigLoader(configLogger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var configLoader = new ConfigLoader(configLogger, securityOptions);
         var validatorFactoryLogger = NullLogger<ValidatorFactory>.Instance;
         var validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var fileValidatorLogger = NullLogger<FileValidator>.Instance;
         var fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
-        _ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger);
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("sguard-test");
+        _ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguard-test");
     }
 
     [Fact]
@@ -290,7 +292,7 @@ public sealed class RuleEngineTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("cannot be null or empty");
+        result.ErrorMessage.Should().Contain("File path cannot be null or empty");
     }
 
     [Fact]
@@ -302,7 +304,7 @@ public sealed class RuleEngineTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("cannot be null or empty");
+        result.ErrorMessage.Should().Contain("Environment ID is required");
     }
 
     [Fact]
@@ -321,13 +323,13 @@ public sealed class RuleEngineTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystemHelper.SafeWriteAllText(filePath, content);
+        SafeFileSystem.SafeWriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

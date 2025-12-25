@@ -48,7 +48,7 @@ public sealed class TypedValue
     /// <summary>
     /// Attempts to return the value as a numeric value.
     /// If the underlying value is of type <c>Number</c>, tries to convert it to <c>double</c>.
-    /// If the value is a <see cref="JsonElement"/>, tries to extract a numeric value from its kind.
+    /// If the value is a <see cref="System.Text.Json.JsonElement"/>, tries to extract a numeric value from its kind.
     /// If the value is a string, parses it as a <c>double</c>.
     /// </summary>
     /// <param name="numericValue">
@@ -75,7 +75,7 @@ public sealed class TypedValue
     /// <summary>
     /// Attempts to return the value as an integer.
     /// If the underlying value is of type <c>Number</c>, tries to convert it to <c>int</c>.
-    /// If the value is a <see cref="JsonElement"/>, tries to extract an integer from its kind.
+    /// If the value is a <see cref="System.Text.Json.JsonElement"/>, tries to extract an integer from its kind.
     /// If the value is a string, parse it as an integer.
     /// </summary>
     /// <param name="intValue">
@@ -101,7 +101,7 @@ public sealed class TypedValue
 
     /// <summary>
     /// Attempts to extract the value as a string array.
-    /// If the underlying value is a <see cref="JsonElement"/> of array kind, each element is converted to a string.
+    /// If the underlying value is a <see cref="System.Text.Json.JsonElement"/> of array kind, each element is converted to a string.
     /// If the underlying value is already a string array, it is returned directly.
     /// </summary>
     /// <param name="arrayValue">When this method returns, contains the string array if extraction succeeds; otherwise, an empty array.</param>
@@ -112,7 +112,7 @@ public sealed class TypedValue
 
         if (_value == null) return false;
 
-        if (_valueType == ValueType.JsonElement && _value is JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
+        if (_valueType == ValueType.JsonElement && _value is System.Text.Json.JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
         {
             var list = new List<string>();
 
@@ -138,8 +138,8 @@ public sealed class TypedValue
     /// Creates a <see cref="TypedValue"/> instance that wraps the provided value in a type-safe manner.
     /// Determines the <see cref="ValueType"/> based on the runtime type and content of the value:
     /// <list type="bullet">
-    ///   <item>If <paramref name="value"/> is <c>null</c> or a <see cref="JsonElement"/> with <see cref="JsonValueKind.Null"/>, returns a <see cref="TypedValue"/> of type <c>Null</c>.</item>
-    ///   <item>If <paramref name="value"/> is a <see cref="JsonElement"/> with <see cref="JsonValueKind"/> of <c>String</c>, <c>Number</c>, <c>True</c>, <c>False</c>, <c>Array</c>, or <c>Object</c>, returns a <see cref="TypedValue"/> of type <c>JsonElement</c>.</item>
+    ///   <item>If <paramref name="value"/> is <c>null</c> or a <see cref="System.Text.Json.JsonElement"/> with <see cref="JsonValueKind.Null"/>, returns a <see cref="TypedValue"/> of type <c>Null</c>.</item>
+    ///   <item>If <paramref name="value"/> is a <see cref="System.Text.Json.JsonElement"/> with <see cref="JsonValueKind"/> of <c>String</c>, <c>Number</c>, <c>True</c>, <c>False</c>, <c>Array</c>, or <c>Object</c>, returns a <see cref="TypedValue"/> of type <c>JsonElement</c>.</item>
     ///   <item>If <paramref name="value"/> is a numeric type (<c>int</c>, <c>long</c>, <c>short</c>, <c>byte</c>, <c>float</c>, <c>double</c>, <c>decimal</c>), returns a <see cref="TypedValue"/> of type <c>Number</c>.</item>
     ///   <item>If <paramref name="value"/> is a <c>string</c>, returns a <see cref="TypedValue"/> of type <c>String</c>.</item>
     ///   <item>If <paramref name="value"/> is a <c>bool</c>, returns a <see cref="TypedValue"/> of type <c>Boolean</c>.</item>
@@ -157,8 +157,8 @@ public sealed class TypedValue
 
         return value switch
         {
-            JsonElement { ValueKind: JsonValueKind.Null } => new TypedValue(null, ValueType.Null),
-            JsonElement
+            System.Text.Json.JsonElement { ValueKind: JsonValueKind.Null } => new TypedValue(null, ValueType.Null),
+            System.Text.Json.JsonElement
             {
                 ValueKind: JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False or JsonValueKind.Array
                            or JsonValueKind.Object
@@ -171,18 +171,18 @@ public sealed class TypedValue
     }
 
     /// <summary>
-    /// Extracts a string representation from the underlying <see cref="JsonElement"/>.
+    /// Extracts a string representation from the underlying <see cref="System.Text.Json.JsonElement"/>.
     /// Handles different <see cref="JsonValueKind"/>s:
     /// - String: returns the string value.
     /// - Number: returns the raw JSON text.
     /// - True/False: returns "true"/"false" as string.
     /// - Others: returns the raw JSON text.
-    /// Returns null if the value is not a <see cref="JsonElement"/>.
+    /// Returns null if the value is not a <see cref="System.Text.Json.JsonElement"/>.
     /// </summary>
     /// <returns>The string representation, or null if not applicable.</returns>
     private string? ExtractStringFromJsonElement()
     {
-        if (_value is not JsonElement element)
+        if (_value is not System.Text.Json.JsonElement element)
         {
             return null;
         }
@@ -198,7 +198,7 @@ public sealed class TypedValue
     }
 
     /// <summary>
-    /// Attempts to extract a numeric value from the underlying <see cref="JsonElement"/>.
+    /// Attempts to extract a numeric value from the underlying <see cref="System.Text.Json.JsonElement"/>.
     /// Only succeeds if the element is of <see cref="JsonValueKind.Number"/>.
     /// Tries to get the value as double, falls back to Int64 if necessary.
     /// </summary>
@@ -208,7 +208,7 @@ public sealed class TypedValue
     {
         numericValue = 0;
 
-        if (_value is not JsonElement { ValueKind: JsonValueKind.Number } element)
+        if (_value is not System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element)
         {
             return false;
         }
@@ -228,7 +228,7 @@ public sealed class TypedValue
     }
 
     /// <summary>
-    /// Attempts to extract an <c>int</c> value from the underlying <see cref="JsonElement"/>.
+    /// Attempts to extract an <c>int</c> value from the underlying <see cref="System.Text.Json.JsonElement"/>.
     /// Only succeeds if the element is of <see cref="JsonValueKind.Number"/>.
     /// </summary>
     /// <param name="intValue">When this method returns, contains the extracted integer value if successful; otherwise, <c>0</c>.</param>
@@ -237,7 +237,7 @@ public sealed class TypedValue
     {
         intValue = 0;
 
-        if (_value is JsonElement { ValueKind: JsonValueKind.Number } element)
+        if (_value is System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element)
         {
             return element.TryGetInt32(out intValue);
         }

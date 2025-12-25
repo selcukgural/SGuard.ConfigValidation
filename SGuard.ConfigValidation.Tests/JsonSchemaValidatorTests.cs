@@ -12,7 +12,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     public JsonSchemaValidatorTests()
     {
         _validator = new JsonSchemaValidator();
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("jsonschema-test");
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("jsonschema-test");
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.Contains("cannot be null or empty", StringComparison.OrdinalIgnoreCase));
+        result.Errors.Should().Contain(e => e.Contains("is required but was null or empty", StringComparison.OrdinalIgnoreCase) || e.Contains("cannot be null or empty", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -168,13 +168,13 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     private string CreateTestFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystemHelper.SafeWriteAllText(filePath, content);
+        SafeFileSystem.SafeWriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

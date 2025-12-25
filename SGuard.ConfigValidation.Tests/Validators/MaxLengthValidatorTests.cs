@@ -43,7 +43,9 @@ public sealed class MaxLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String exceeds maximum length");
+            result.Message.Should().Contain("String exceeds maximum length");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("maximum length");
             result.ValidatorType.Should().Be("max_len");
         }
         else
@@ -117,7 +119,9 @@ public sealed class MaxLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Value exceeds maximum length");
+            result.Message.Should().Contain("Value exceeds maximum length");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("max_len");
         }
         else
@@ -143,7 +147,9 @@ public sealed class MaxLengthValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse(); // 11 chars > 10
-        result.Message.Should().Be("String exceeds maximum length");
+        result.Message.Should().Contain("String exceeds maximum length");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("maximum length");
         result.ValidatorType.Should().Be("max_len");
     }
 
@@ -163,7 +169,9 @@ public sealed class MaxLengthValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse(); // 11 chars > 10
-        result.Message.Should().Be("String exceeds maximum length");
+        result.Message.Should().Contain("String exceeds maximum length");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("maximum length");
     }
 
     [Fact]
@@ -215,7 +223,9 @@ public sealed class MaxLengthValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom max length error message");
+        result.Message.Should().Contain("Custom max length error message");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("max_len");
         result.Value.Should().Be("long string");
     }
@@ -261,7 +271,9 @@ public sealed class MaxLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String exceeds maximum length");
+            result.Message.Should().Contain("String exceeds maximum length");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("maximum length");
             result.ValidatorType.Should().Be("max_len");
         }
         else

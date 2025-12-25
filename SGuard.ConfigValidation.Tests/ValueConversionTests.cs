@@ -3,7 +3,7 @@ using SGuard.ConfigValidation.Common;
 
 namespace SGuard.ConfigValidation.Tests;
 
-public sealed class ValueConversionHelperTests
+public sealed class ValueConversionTests
 {
     [Fact]
     public void CompareValues_With_IntegerValues_Should_Compare_Correctly()
@@ -13,7 +13,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10 should be less than 20");
@@ -27,7 +27,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 10;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().Be(0, "Equal values should return 0");
@@ -41,7 +41,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20.3;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10.5 should be less than 20.3");
@@ -55,7 +55,7 @@ public sealed class ValueConversionHelperTests
         var value2 = "20";
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("'10' should be less than '20' when parsed as numbers");
@@ -69,7 +69,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20.5; // double
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10 should be less than 20.5");
@@ -83,7 +83,7 @@ public sealed class ValueConversionHelperTests
         var value2 = "banana";
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("'apple' should be less than 'banana' alphabetically");
@@ -97,7 +97,7 @@ public sealed class ValueConversionHelperTests
         object? value2 = null;
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() => ValueConversionHelper.CompareValues(value1, value2));
+        var exception = Assert.Throws<ArgumentException>(() => ValueConversion.CompareValues(value1, value2));
         exception.Message.ToLowerInvariant().Should().Contain("cannot be null");
     }
 
@@ -109,7 +109,7 @@ public sealed class ValueConversionHelperTests
         var value2 = new { Name = "test" };
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() => ValueConversionHelper.CompareValues(value1, value2));
+        var exception = Assert.Throws<ArgumentException>(() => ValueConversion.CompareValues(value1, value2));
         exception.Message.ToLowerInvariant().Should().Contain("not comparable");
     }
 
@@ -121,7 +121,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20.3m;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10.5m should be less than 20.3m");
@@ -135,7 +135,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20.3f;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10.5f should be less than 20.3f");
@@ -149,7 +149,7 @@ public sealed class ValueConversionHelperTests
         var value2 = 20L;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10L should be less than 20L");
@@ -163,7 +163,7 @@ public sealed class ValueConversionHelperTests
         byte value2 = 20;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10 should be less than 20");
@@ -177,7 +177,7 @@ public sealed class ValueConversionHelperTests
         short value2 = 20;
 
         // Act
-        var result = ValueConversionHelper.CompareValues(value1, value2);
+        var result = ValueConversion.CompareValues(value1, value2);
 
         // Assert
         result.Should().BeNegative("10 should be less than 20");

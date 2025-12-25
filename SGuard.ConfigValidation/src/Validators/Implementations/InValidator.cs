@@ -24,7 +24,11 @@ public sealed class InValidator : BaseValidator<object>
             // Check JsonElement for backward compatibility
             if (condition.Value is not System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Array } jsonElement)
             {
-                return CreateFailure($"Value for '{ValidatorType}' validator must be an array", string.Empty, value);
+                return CreateFailure(
+                    $"Validation failed: Value for '{ValidatorType}' validator must be an array. " +
+                    $"Actual value type: {condition.Value?.GetType().Name ?? "null"}. " +
+                    "Please provide an array of allowed values.",
+                    string.Empty, value, condition.Value);
             }
 
             var allowedValuesList = new List<string>();
@@ -39,6 +43,15 @@ public sealed class InValidator : BaseValidator<object>
         var valueString = valueTyped.AsString() ?? string.Empty;
         var isInList = allowedValues.Any(v => string.Equals(v, valueString, StringComparison.OrdinalIgnoreCase));
         
-        return !isInList ? CreateFailure(condition.Message, string.Empty, value) : CreateSuccess();
+        if (!isInList)
+        {
+            var allowedValuesStr = string.Join(", ", allowedValues.Select(v => $"'{v}'"));
+            return CreateFailure(
+                condition.Message, 
+                string.Empty, 
+                value, 
+                $"one of: {allowedValuesStr}");
+        }
+        return CreateSuccess();
     }
 }

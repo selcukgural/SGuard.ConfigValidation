@@ -30,9 +30,17 @@ public sealed class MaxLengthValidator : BaseValidator<object>
         if (!conditionTypedValue.TryGetInt32(out maxLength))
         {
             // Use JsonElementHelper for backward compatibility (may throw exception)
-            maxLength = JsonElementHelper.GetInt32(condition.Value, ValidatorType);
+            maxLength = JsonElement.GetInt32(condition.Value, ValidatorType);
         }
 
-        return stringValue.Length > maxLength ? CreateFailure(condition.Message, string.Empty, value) : CreateSuccess();
+        if (stringValue.Length > maxLength)
+        {
+            return CreateFailure(
+                condition.Message, 
+                string.Empty, 
+                value, 
+                $"maximum length of {maxLength} characters (actual length: {stringValue.Length})");
+        }
+        return CreateSuccess();
     }
 }

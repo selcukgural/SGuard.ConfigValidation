@@ -45,7 +45,9 @@ public sealed class LessThanOrEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Value must be less than or equal to threshold");
+            result.Message.Should().Contain("Value must be less than or equal to threshold");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("lte");
         }
         else
@@ -199,7 +201,9 @@ public sealed class LessThanOrEqualValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom less than or equal error message");
+        result.Message.Should().Contain("Custom less than or equal error message");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("lte");
         result.Value.Should().Be(10);
     }
@@ -284,7 +288,9 @@ public sealed class LessThanOrEqualValidatorTests
         result1.Message.Should().BeEmpty();
         
         result2.IsValid.Should().BeFalse();
-        result2.Message.Should().Be("Value must be less than or equal to threshold");
+        result2.Message.Should().Contain("Value must be less than or equal to threshold");
+        result2.Message.Should().Contain("Actual value:");
+        result2.Message.Should().Contain("Expected value:");
         result2.ValidatorType.Should().Be("lte");
         
         result3.IsValid.Should().BeTrue(); // equal should pass

@@ -18,7 +18,7 @@ public sealed class FileValidatorTests : IDisposable
         var validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var fileValidatorLogger = NullLogger<FileValidator>.Instance;
         _fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("filevalidator-test");
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("filevalidator-test");
     }
 
     [Fact]
@@ -369,7 +369,7 @@ public sealed class FileValidatorTests : IDisposable
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

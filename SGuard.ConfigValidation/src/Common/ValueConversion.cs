@@ -1,9 +1,11 @@
+using SGuard.ConfigValidation.Resources;
+
 namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
 /// Helper class for value conversion and comparison operations used by validators.
 /// </summary>
-public static class ValueConversionHelper
+public static class ValueConversion
 {
     /// <summary>
     /// Attempts to convert a value to double for numeric comparison.
@@ -63,7 +65,7 @@ public static class ValueConversionHelper
     {
         if (conditionValue == null)
         {
-            throw new ArgumentException("Condition value cannot be null for comparison");
+            throw This.ArgumentException(nameof(SR.ArgumentException_ConditionValueNull), nameof(conditionValue));
         }
 
         // Try to convert both to double for numeric comparison
@@ -78,7 +80,7 @@ public static class ValueConversionHelper
             return comparableValue.CompareTo(comparableCondition);
         }
 
-        throw new ArgumentException("Values are not comparable");
+        throw This.ArgumentException(nameof(SR.ArgumentException_ValuesNotComparable), nameof(value));
     }
 }
 

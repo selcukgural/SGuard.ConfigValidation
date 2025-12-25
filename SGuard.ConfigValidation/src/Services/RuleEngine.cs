@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators;
 
 namespace SGuard.ConfigValidation.Services;
@@ -25,23 +27,30 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="configLoader">The configuration loader service.</param>
     /// <param name="fileValidator">The file validator service.</param>
     /// <param name="validatorFactory">The validator factory.</param>
-    /// <param name="pathResolver">The path resolver service.</param>
-    /// <param name="configValidator">Optional configuration validator for JSON-based validation.</param>
     /// <param name="logger">Logger instance.</param>
-    /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
+    /// <param name="securityOptions">Security options configured via IOptions pattern.</param>
+    /// <param name="pathResolver">Optional path resolver service. If not provided, a new instance will be created.</param>
+    /// <param name="configValidator">Optional configuration validator for JSON-based validation.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
     public RuleEngine(
         IConfigLoader configLoader,
         IFileValidator fileValidator,
         IValidatorFactory validatorFactory,
         ILogger<RuleEngine> logger,
+        IOptions<SecurityOptions> securityOptions,
         IPathResolver? pathResolver = null,
         IConfigValidator? configValidator = null)
     {
-        _configLoader = configLoader ?? throw new ArgumentNullException(nameof(configLoader));
-        _fileValidator = fileValidator ?? throw new ArgumentNullException(nameof(fileValidator));
-        _validatorFactory = validatorFactory ?? throw new ArgumentNullException(nameof(validatorFactory));
+        ArgumentNullException.ThrowIfNull(configLoader);
+        ArgumentNullException.ThrowIfNull(fileValidator);
+        ArgumentNullException.ThrowIfNull(validatorFactory);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(securityOptions);
+        _configLoader = configLoader;
+        _fileValidator = fileValidator;
+        _validatorFactory = validatorFactory;
         _configValidator = configValidator;
-        _pathResolver = pathResolver ?? new PathResolver();
+        _pathResolver = pathResolver ?? new PathResolver(securityOptions);
         _logger = logger;
     }
 
@@ -135,8 +144,11 @@ public sealed class RuleEngine : IRuleEngine
 
         if (string.IsNullOrWhiteSpace(environmentId))
         {
-            _logger.LogWarning("Validation failed: Environment ID is null or empty");
-            return RuleEngineResult.CreateError("Environment ID cannot be null or empty.");
+            _logger.LogWarning("Validation failed: Environment ID is null or empty. Context: {ContextDescription}", contextDescription);
+            return RuleEngineResult.CreateError(
+                $"Validation failed: Environment ID is required but was null or empty. " +
+                $"Context: {contextDescription}. " +
+                "Please provide a valid environment ID to validate.");
         }
 
         try
@@ -148,14 +160,18 @@ public sealed class RuleEngine : IRuleEngine
             var environment = FindEnvironment(config, environmentId);
             if (environment == null)
             {
-                return CreateEnvironmentNotFoundError(config, environmentId);
+                return CreateEnvironmentNotFoundError(config, environmentId, contextDescription);
             }
 
             // For file-based validation, check path validity
             if (requirePath && string.IsNullOrWhiteSpace(environment.Path))
             {
-                _logger.LogWarning("Environment {EnvironmentId} has an invalid or empty path", environmentId);
-                return RuleEngineResult.CreateError($"Environment '{environmentId}' has an invalid or empty path.");
+                _logger.LogWarning("Environment {EnvironmentId} has an invalid or empty path. Context: {ContextDescription}", environmentId, contextDescription);
+                return RuleEngineResult.CreateError(
+                    $"Validation failed: Environment '{environmentId}' has an invalid or empty path. " +
+                    $"Context: {contextDescription}. " +
+                    $"Environment name: '{environment.Name}'. " +
+                    "Please ensure the environment definition includes a valid 'path' property pointing to the app settings file.");
             }
 
             var validationResult = validateEnvironment(config, environment);
@@ -164,21 +180,34 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "File not found during validation of environment {EnvironmentId} {ContextDescription}", 
-                environmentId, contextDescription);
-            return RuleEngineResult.CreateError($"File not found: {ex.Message}", ex);
+            _logger.LogError(ex, "File not found during validation of environment {EnvironmentId} {ContextDescription}. File path: {FilePath}", 
+                environmentId, contextDescription, ex.FileName ?? "unknown");
+            return RuleEngineResult.CreateError(
+                $"Validation failed: Required file not found. " +
+                $"Environment ID: '{environmentId}'. " +
+                $"File path: '{ex.FileName ?? "unknown"}'. " +
+                $"Context: {contextDescription}. " +
+                $"Error: {ex.Message}. " +
+                "Please ensure the configuration file and referenced app settings files exist and are accessible.", 
+                ex);
         }
         catch (ConfigurationException ex)
         {
-            _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId} {ContextDescription}", 
-                environmentId, contextDescription);
-            return RuleEngineResult.CreateError($"Configuration error: {ex.Message}", ex);
+            _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId} {ContextDescription}. Error: {ErrorMessage}", 
+                environmentId, contextDescription, ex.Message);
+            return RuleEngineResult.CreateError(
+                $"Validation failed: Configuration error detected. " +
+                $"Environment ID: '{environmentId}'. " +
+                $"Context: {contextDescription}. " +
+                $"Error: {ex.Message}. " +
+                "Please review the configuration file structure and fix any validation errors.", 
+                ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId} {ContextDescription}", 
-                environmentId, contextDescription);
-            return HandleValidationError(ex);
+            _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId} {ContextDescription}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
+                environmentId, contextDescription, ex.GetType().Name, ex.Message);
+            return HandleValidationError(ex, environmentId, contextDescription);
         }
     }
 
@@ -218,18 +247,32 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "File not found during validation of all environments {ContextDescription}", contextDescription);
-            return RuleEngineResult.CreateError($"File not found: {ex.Message}", ex);
+            _logger.LogError(ex, "File not found during validation of all environments {ContextDescription}. File path: {FilePath}", 
+                contextDescription, ex.FileName ?? "unknown");
+            return RuleEngineResult.CreateError(
+                $"Validation failed: Required file not found. " +
+                $"Context: {contextDescription}. " +
+                $"File path: '{ex.FileName ?? "unknown"}'. " +
+                $"Error: {ex.Message}. " +
+                "Please ensure the configuration file and referenced app settings files exist and are accessible.", 
+                ex);
         }
         catch (ConfigurationException ex)
         {
-            _logger.LogError(ex, "Configuration error during validation of all environments {ContextDescription}", contextDescription);
-            return RuleEngineResult.CreateError($"Configuration error: {ex.Message}", ex);
+            _logger.LogError(ex, "Configuration error during validation of all environments {ContextDescription}. Error: {ErrorMessage}", 
+                contextDescription, ex.Message);
+            return RuleEngineResult.CreateError(
+                $"Validation failed: Configuration error detected. " +
+                $"Context: {contextDescription}. " +
+                $"Error: {ex.Message}. " +
+                "Please review the configuration file structure and fix any validation errors.", 
+                ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during validation of all environments {ContextDescription}", contextDescription);
-            return HandleValidationError(ex);
+            _logger.LogError(ex, "Unexpected error during validation of all environments {ContextDescription}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
+                contextDescription, ex.GetType().Name, ex.Message);
+            return HandleValidationError(ex, null, contextDescription);
         }
     }
 
@@ -252,12 +295,19 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Creates an error result when environment is not found.
     /// </summary>
-    private RuleEngineResult CreateEnvironmentNotFoundError(SGuardConfig config, string environmentId)
+    private RuleEngineResult CreateEnvironmentNotFoundError(SGuardConfig config, string environmentId, string? contextDescription = null)
     {
         var availableEnvironments = string.Join(", ", config.Environments.Select(e => e.Id));
-        _logger.LogWarning("Environment {EnvironmentId} not found in configuration. Available environments: {AvailableEnvironments}", 
-            environmentId, availableEnvironments);
-        return RuleEngineResult.CreateError($"Environment '{environmentId}' not found in configuration. Available environments: {availableEnvironments}");
+        var contextInfo = !string.IsNullOrWhiteSpace(contextDescription) 
+            ? $" Context: {contextDescription}." 
+            : string.Empty;
+        _logger.LogWarning("Environment {EnvironmentId} not found in configuration. Available environments: {AvailableEnvironments}.{ContextInfo}", 
+            environmentId, availableEnvironments, contextInfo);
+        return RuleEngineResult.CreateError(
+            $"Validation failed: Environment '{environmentId}' not found in configuration.{contextInfo} " +
+            $"Total environments in configuration: {config.Environments.Count}. " +
+            $"Available environment IDs: {availableEnvironments}. " +
+            "Please verify the environment ID is correct and matches one of the available environments in the configuration file.");
     }
 
     /// <summary>
@@ -324,7 +374,7 @@ public sealed class RuleEngine : IRuleEngine
                     _logger.LogWarning("Environment {EnvironmentId} has an invalid or empty path", environment.Id);
                     results.Add(new FileValidationResult(environment.Id,
                     [
-                        ValidationResult.Failure($"Environment '{environment.Id}' has an invalid or empty path.", "system", environment.Id, null)
+                        ValidationResult.Failure(ValidationMessageFormatter.FormatEnvironmentError(environment.Id, "has an invalid or empty path", ""), "system", environment.Id, null)
                     ]));
                     continue;
                 }
@@ -337,7 +387,7 @@ public sealed class RuleEngine : IRuleEngine
             {
                 _logger.LogError(ex, "File not found during validation of environment {EnvironmentId}", environment.Id);
                 var errorValidation = ValidationResult.Failure(
-                    $"File not found for environment '{environment.Id}': {ex.Message}", 
+                    ValidationMessageFormatter.FormatFileNotFoundError(environment.Id, environment.Path, ex), 
                     "system", 
                     environment.Path, 
                     null, 
@@ -348,7 +398,7 @@ public sealed class RuleEngine : IRuleEngine
             {
                 _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId}", environment.Id);
                 var errorValidation = ValidationResult.Failure(
-                    $"Configuration error for environment '{environment.Id}': {ex.Message}", 
+                    ValidationMessageFormatter.FormatConfigurationError(environment.Id, ex.Message, ex), 
                     "system", 
                     environment.Path, 
                     null, 
@@ -360,7 +410,7 @@ public sealed class RuleEngine : IRuleEngine
                 _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId}", environment.Id);
                 // Create an error result for this environment but continue with others
                 var errorValidation = ValidationResult.Failure(
-                    $"Failed to load or validate environment '{environment.Id}': {ex.Message}", 
+                    ValidationMessageFormatter.FormatFailedToLoadEnvironmentError(environment.Id, ex.Message, ex), 
                     "system", 
                     environment.Path, 
                     null, 
@@ -430,7 +480,7 @@ public sealed class RuleEngine : IRuleEngine
     {
         if (string.IsNullOrWhiteSpace(configJson))
         {
-            throw new ArgumentException("Configuration JSON cannot be null or empty.", nameof(configJson));
+            throw This.ArgumentException(nameof(SR.ArgumentException_ConfigJsonNullOrEmpty), nameof(configJson));
         }
 
         try
@@ -439,12 +489,12 @@ public sealed class RuleEngine : IRuleEngine
             
             if (config == null)
             {
-                throw new ConfigurationException("Failed to deserialize configuration JSON. The JSON may be malformed or empty.");
+                This.ConfigurationException(nameof(SR.ConfigurationException_JsonDeserializationFailed));
             }
 
             if (config.Environments == null || config.Environments.Count == 0)
             {
-                throw new ConfigurationException("Configuration JSON must contain at least one environment definition.");
+                This.ConfigurationException(nameof(SR.ConfigurationException_JsonNoEnvironments));
             }
 
             // Validate configuration structure and integrity if a validator is available
@@ -456,8 +506,7 @@ public sealed class RuleEngine : IRuleEngine
                 if (validationErrors.Count > 0)
                 {
                     var errorMessage = string.Join(System.Environment.NewLine, validationErrors);
-                    throw new ConfigurationException(
-                        $"Configuration JSON validation failed:{System.Environment.NewLine}{errorMessage}");
+                    This.ConfigurationException(nameof(SR.ConfigurationException_JsonValidationFailed), System.Environment.NewLine, errorMessage);
                 }
             }
 
@@ -465,7 +514,7 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (JsonException ex)
         {
-            throw new ConfigurationException($"Invalid JSON format in configuration: {ex.Message}", ex);
+            throw This.ConfigurationException(nameof(SR.ConfigurationException_InvalidJsonFormatSimple), ex, ex.Message);
         }
     }
 
@@ -503,14 +552,42 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Handles validation errors and converts them to RuleEngineResult.
     /// </summary>
-    private static RuleEngineResult HandleValidationError(Exception ex)
+    private static RuleEngineResult HandleValidationError(Exception ex, string? environmentId = null, string? contextDescription = null)
     {
         return ex switch
         {
-            FileNotFoundException => RuleEngineResult.CreateError($"File not found: {ex.Message}", ex),
-            ConfigurationException => RuleEngineResult.CreateError($"Configuration error: {ex.Message}", ex),
-            ValidationException => RuleEngineResult.CreateError($"Validation error: {ex.Message}", ex),
-            _ => RuleEngineResult.CreateError($"Validation failed: {ex.Message}", ex)
+            FileNotFoundException fileEx => RuleEngineResult.CreateError(
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Required file not found.",
+                    environmentId,
+                    contextDescription,
+                    $"File path: '{fileEx.FileName ?? "unknown"}'. Error: {ex.Message}.",
+                    "Please ensure the configuration file and referenced app settings files exist and are accessible."),
+                ex),
+            ConfigurationException => RuleEngineResult.CreateError(
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Configuration error detected.",
+                    environmentId,
+                    contextDescription,
+                    $"Error: {ex.Message}.",
+                    "Please review the configuration file structure and fix any validation errors."),
+                ex),
+            ValidationException => RuleEngineResult.CreateError(
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Validation error occurred.",
+                    environmentId,
+                    contextDescription,
+                    $"Error: {ex.Message}.",
+                    "Please review the validation rules and fix any rule violations."),
+                ex),
+            _ => RuleEngineResult.CreateError(
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Unexpected error occurred.",
+                    environmentId,
+                    contextDescription,
+                    $"Exception type: {ex.GetType().Name}. Error: {ex.Message}.",
+                    "This is an unexpected error. Please check the logs for more details and contact support if the issue persists."),
+                ex)
         };
     }
 }

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Output;
 
@@ -6,14 +7,61 @@ namespace SGuard.ConfigValidation.Tests;
 
 public sealed class OutputFormatterTests
 {
+    private sealed class TestLoggerProvider : ILoggerProvider
+    {
+        private readonly StringWriter _output;
+
+        public TestLoggerProvider(StringWriter output)
+        {
+            _output = output;
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return new TestLogger(_output);
+        }
+
+        public void Dispose() { }
+    }
+
+    private sealed class TestLogger : ILogger
+    {
+        private readonly StringWriter _output;
+
+        public TestLogger(StringWriter output)
+        {
+            _output = output;
+        }
+
+        public IDisposable BeginScope<TState>(TState state) => null!;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var message = formatter(state, exception);
+            if (!string.IsNullOrEmpty(message))
+            {
+                _output.WriteLine(message);
+            }
+        }
+    }
+
+    private static (ILogger<ConsoleOutputFormatter> Logger, StringWriter Output) CreateTestLogger()
+    {
+        var output = new StringWriter();
+        var loggerFactory = LoggerFactory.Create(builder => 
+            builder.AddProvider(new TestLoggerProvider(output)).SetMinimumLevel(LogLevel.Trace));
+        return (loggerFactory.CreateLogger<ConsoleOutputFormatter>(), output);
+    }
+
     [Fact]
     public async Task ConsoleOutputFormatter_With_SuccessfulResult_Should_Output_SuccessMessage()
     {
         // Arrange
-        var formatter = new ConsoleOutputFormatter();
+        var (logger, output) = CreateTestLogger();
+        var formatter = new ConsoleOutputFormatter(logger);
         var result = RuleEngineResult.CreateSuccess(new FileValidationResult("test.json", []));
-        var output = new StringWriter();
-        Console.SetOut(output);
 
         try
         {
@@ -35,12 +83,11 @@ public sealed class OutputFormatterTests
     public async Task ConsoleOutputFormatter_With_FailedResult_Should_Output_ErrorMessage()
     {
         // Arrange
-        var formatter = new ConsoleOutputFormatter();
+        var (logger, output) = CreateTestLogger();
+        var formatter = new ConsoleOutputFormatter(logger);
         var errorResult = ValidationResult.Failure("Test error", "required", "Test:Key", null);
         var fileResult = new FileValidationResult("test.json", [errorResult]);
         var result = RuleEngineResult.CreateSuccess(fileResult);
-        var output = new StringWriter();
-        Console.SetOut(output);
 
         try
         {
@@ -63,10 +110,9 @@ public sealed class OutputFormatterTests
     public async Task ConsoleOutputFormatter_With_ErrorResult_Should_Output_Error()
     {
         // Arrange
-        var formatter = new ConsoleOutputFormatter();
+        var (logger, output) = CreateTestLogger();
+        var formatter = new ConsoleOutputFormatter(logger);
         var result = RuleEngineResult.CreateError("Test error message");
-        var output = new StringWriter();
-        Console.SetOut(output);
 
         try
         {
@@ -88,15 +134,14 @@ public sealed class OutputFormatterTests
     public async Task ConsoleOutputFormatter_With_MultipleEnvironments_Should_Output_All()
     {
         // Arrange
-        var formatter = new ConsoleOutputFormatter();
+        var (logger, output) = CreateTestLogger();
+        var formatter = new ConsoleOutputFormatter(logger);
         var results = new List<FileValidationResult>
         {
             new("env1.json", []),
             new("env2.json", [])
         };
         var result = RuleEngineResult.CreateSuccess(results);
-        var output = new StringWriter();
-        Console.SetOut(output);
 
         try
         {

@@ -1,5 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
@@ -17,7 +19,8 @@ public sealed class ConfigValidatorTests
         var validatorFactoryLogger = NullLogger<ValidatorFactory>.Instance;
         _validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var configValidatorLogger = NullLogger<ConfigValidator>.Instance;
-        _validator = new ConfigValidator(_validatorFactory, configValidatorLogger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        _validator = new ConfigValidator(configValidatorLogger, securityOptions, _validatorFactory);
     }
 
     [Fact]
@@ -129,7 +132,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'id' is required") && e.Contains("Environment"));
+        errors.Should().Contain(e => (e.Contains("'id' is required") || e.Contains("Required property 'id'")) && e.Contains("Environment"));
     }
 
     [Fact]
@@ -150,7 +153,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'path' is required") && e.Contains("Environment"));
+        errors.Should().Contain(e => (e.Contains("'path' is required") || e.Contains("Required property 'path'")) && e.Contains("Environment"));
     }
 
     [Fact]
@@ -171,7 +174,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'name' is required") && e.Contains("Environment"));
+        errors.Should().Contain(e => (e.Contains("'name' is required") || e.Contains("Required property 'name'")) && e.Contains("Environment"));
     }
 
     [Fact]
@@ -204,7 +207,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("references environment ID 'nonexistent'") && e.Contains("does not exist"));
+        errors.Should().Contain(e => e.Contains("references non-existent environment") && e.Contains("nonexistent"));
     }
 
     [Fact]
@@ -237,7 +240,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'environments' array is required") && e.Contains("at least one environment ID"));
+        errors.Should().Contain(e => (e.Contains("'environments' array is required") || e.Contains("Required array 'environments'")) && e.Contains("at least one environment ID"));
     }
 
     [Fact]
@@ -280,7 +283,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'unsupported_validator' is not supported"));
+        errors.Should().Contain(e => e.Contains("Unsupported validator type") && e.Contains("unsupported_validator"));
     }
 
     [Fact]
@@ -323,7 +326,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'value' is required") && e.Contains("min_len"));
+        errors.Should().Contain(e => e.Contains("'value' is required") || e.Contains("Required property 'value'") && e.Contains("min_len"));
     }
 
     [Fact]
@@ -366,7 +369,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'message' is required"));
+        errors.Should().Contain(e => e.Contains("'message' is required") || e.Contains("Required property 'message'"));
     }
 
     [Fact]
@@ -409,7 +412,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'key' is required") && e.Contains("condition"));
+        errors.Should().Contain(e => (e.Contains("'key' is required") || e.Contains("Required property 'key'")) && e.Contains("condition"));
     }
 
     [Fact]
@@ -442,7 +445,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'conditions' array is required") && e.Contains("at least one condition"));
+        errors.Should().Contain(e => (e.Contains("'conditions' array is required") || e.Contains("Required array 'conditions'")) && e.Contains("at least one condition"));
     }
 
     [Fact]
@@ -485,7 +488,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'id' is required") && e.Contains("rule"));
+        errors.Should().Contain(e => (e.Contains("'id' is required") || e.Contains("Required property 'id'")) && e.Contains("rule"));
     }
 
     [Fact]
@@ -514,7 +517,7 @@ public sealed class ConfigValidatorTests
         var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
 
         // Assert
-        errors.Should().Contain(e => e.Contains("'rule' object is required"));
+        errors.Should().Contain(e => e.Contains("'rule' object is required") || e.Contains("Required property 'rule'"));
     }
 
     [Fact]
@@ -575,6 +578,159 @@ public sealed class ConfigValidatorTests
 
         // Assert
         errors.Should().Contain(e => e.Contains("version") && e.Contains("required"));
+    }
+
+    [Fact]
+    public void Validate_With_PathContainingNullByte_Should_Return_Error()
+    {
+        // Arrange
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "appsettings\0.json" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("null byte") || e.Contains("Path contains"));
+    }
+
+    [Fact]
+    public void Validate_With_PathContainingControlCharacters_Should_Return_Error()
+    {
+        // Arrange - Use actual control characters (not \r\n which are excluded)
+        // Control character (char)1 is SOH (Start of Heading) - not allowed
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "appsettings" + (char)1 + ".json" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert - Control characters should be detected
+        errors.Should().Contain(e => e.Contains("control characters") || 
+                                     e.Contains("Path contains control characters") ||
+                                     e.Contains("Path contains"));
+    }
+
+    [Fact]
+    public void Validate_With_PathContainingDoubleSlashes_Should_Return_Error()
+    {
+        // Arrange
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "appsettings//dev.json" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("consecutive path separators") || e.Contains("Path contains"));
+    }
+
+    [Fact]
+    public void Validate_With_PathContainingExcessiveParentReferences_Should_Return_Error()
+    {
+        // Arrange - Use path with more than 2 consecutive .. (limit is 2)
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "../../../etc/passwd" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("too many parent directory references") || 
+                                     e.Contains("Maximum 2 levels allowed") ||
+                                     e.Contains("Path contains"));
+    }
+
+    [Fact]
+    public void Validate_With_AbsolutePathContainingParentReferences_Should_Return_Error()
+    {
+        // Arrange
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "/etc/../passwd" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("Absolute path contains parent directory references") || e.Contains("Path contains"));
+    }
+
+    [Fact]
+    public void Validate_With_PathExceedingMaxLength_Should_Return_Error()
+    {
+        // Arrange
+        var longPath = new string('a', SecurityConstants.MaxPathLength + 1);
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = longPath }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("too long") || e.Contains("Path is too long"));
+    }
+
+    [Fact]
+    public void Validate_With_ValidPath_Should_NotReturnPathError()
+    {
+        // Arrange
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = new List<Environment>
+            {
+                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
+            },
+            Rules = new List<Rule>()
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().NotContain(e => e.Contains("Path contains") || e.Contains("path"));
     }
 }
 

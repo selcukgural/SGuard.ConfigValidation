@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.Extensions.Options;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Services;
 
 namespace SGuard.ConfigValidation.Tests;
@@ -9,7 +11,8 @@ public sealed class PathResolverTests
 
     public PathResolverTests()
     {
-        _resolver = new PathResolver();
+        var securityOptions = Options.Create(new SecurityOptions());
+        _resolver = new PathResolver(securityOptions);
     }
 
     [Fact]
@@ -86,8 +89,8 @@ public sealed class PathResolverTests
     [Fact]
     public void ResolvePath_With_RelativePathAndNestedDirectory_Should_Resolve_Correctly()
     {
-        // Arrange
-        var relativePath = "../other/test.json";
+        // Arrange - Use a path that stays within base directory
+        var relativePath = "subdir/test.json";
         var basePath = Path.GetFullPath(Path.Combine("dir", "base.json"));
         var baseDirectory = Path.GetDirectoryName(basePath);
         var expectedPath = Path.GetFullPath(Path.Combine(baseDirectory!, relativePath));
@@ -98,6 +101,32 @@ public sealed class PathResolverTests
         // Assert
         result.Should().Be(expectedPath);
         Path.IsPathRooted(result).Should().BeTrue();
+    }
+
+    [Fact]
+    public void ResolvePath_With_PathTraversal_Should_Throw_UnauthorizedAccessException()
+    {
+        // Arrange - Path that tries to escape base directory
+        var relativePath = "../other/test.json";
+        var basePath = Path.GetFullPath(Path.Combine("dir", "base.json"));
+
+        // Act & Assert
+        var action = () => _resolver.ResolvePath(relativePath, basePath);
+        action.Should().Throw<UnauthorizedAccessException>()
+            .WithMessage("*Path traversal*");
+    }
+
+    [Fact]
+    public void ResolvePath_With_AbsolutePathOutsideBaseDirectory_Should_Throw_UnauthorizedAccessException()
+    {
+        // Arrange - Absolute path outside base directory
+        var absolutePath = Path.GetFullPath("/tmp/test.json");
+        var basePath = Path.GetFullPath(Path.Combine("dir", "base.json"));
+
+        // Act & Assert
+        var action = () => _resolver.ResolvePath(absolutePath, basePath);
+        action.Should().Throw<UnauthorizedAccessException>()
+            .WithMessage("*Path traversal*");
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using SGuard.ConfigValidation.Validators.Plugin;
@@ -74,6 +75,24 @@ internal class Program
             builder.AddConsole();
         });
 
+        // Register SecurityOptions from configuration using the IOptions pattern
+        services.AddOptions<SecurityOptions>()
+            .Bind(configuration.GetSection("Security"))
+            .Validate(options =>
+            {
+                // Validate and clamp security options to ensure they don't exceed hard limits
+                // Create a temporary logger factory for validation (before full DI is built)
+                using var tempLoggerFactory = LoggerFactory.Create(builder =>
+                {
+                    builder.AddConfiguration(configuration.GetSection("Logging"));
+                    builder.AddConsole();
+                });
+                var securityLogger = tempLoggerFactory.CreateLogger<SecurityOptions>();
+                options.ValidateAndClamp(securityLogger);
+                return true; // Always return true - validation/clamping is done, but we don't fail on it
+            })
+            .ValidateOnStart(); // Ensure validation runs at startup
+
         // Register services - .NET DI container will automatically resolve constructor dependencies
         services.AddSingleton<ISchemaValidator, JsonSchemaValidator>();
         services.AddSingleton<IYamlLoader, YamlLoader>();
@@ -86,8 +105,8 @@ internal class Program
         services.AddSingleton<IRuleEngine, RuleEngine>();
         
         // Register output formatters
-        services.AddSingleton<SGuard.ConfigValidation.Output.IOutputFormatter, SGuard.ConfigValidation.Output.ConsoleOutputFormatter>();
-        services.AddSingleton<SGuard.ConfigValidation.Output.IOutputFormatter, SGuard.ConfigValidation.Output.JsonOutputFormatter>();
+        services.AddSingleton<ConfigValidation.Output.IOutputFormatter, ConfigValidation.Output.ConsoleOutputFormatter>();
+        services.AddSingleton<ConfigValidation.Output.IOutputFormatter, ConfigValidation.Output.JsonOutputFormatter>();
         
         // Register CLI
         services.AddSingleton<SGuardCli>();

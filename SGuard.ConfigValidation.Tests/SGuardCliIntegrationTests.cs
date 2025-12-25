@@ -1,6 +1,8 @@
 using SGuard.ConfigChecker.Console;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
@@ -15,16 +17,18 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     public SGuardCliIntegrationTests()
     {
         var configLogger = NullLogger<ConfigLoader>.Instance;
-        var configLoader = new ConfigLoader(configLogger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var configLoader = new ConfigLoader(configLogger, securityOptions);
         var validatorFactoryLogger = NullLogger<ValidatorFactory>.Instance;
         var validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var fileValidatorLogger = NullLogger<FileValidator>.Instance;
         var fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
-        var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger);
+        var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
         var cliLogger = NullLogger<SGuardCli>.Instance;
-        _cli = new SGuardCli(ruleEngine, cliLogger);
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("sguardcli-test");
+        using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _cli = new SGuardCli(ruleEngine, cliLogger, loggerFactory);
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguardcli-test");
     }
 
     [Fact]
@@ -126,12 +130,12 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystemHelper.SafeWriteAllText(filePath, content);
+        SafeFileSystem.SafeWriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }

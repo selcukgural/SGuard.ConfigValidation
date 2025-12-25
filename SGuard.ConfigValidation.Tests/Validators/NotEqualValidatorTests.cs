@@ -41,7 +41,9 @@ public sealed class NotEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must not be equal");
+            result.Message.Should().Contain("Values must not be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("ne");
         }
         else
@@ -74,7 +76,9 @@ public sealed class NotEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must not be equal");
+            result.Message.Should().Contain("Values must not be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("ne");
         }
     }
@@ -125,7 +129,9 @@ public sealed class NotEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Boolean values must not be equal");
+            result.Message.Should().Contain("Boolean values must not be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -149,7 +155,9 @@ public sealed class NotEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must not be equal");
+            result.Message.Should().Contain("Values must not be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -194,7 +202,9 @@ public sealed class NotEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Values must not be equal");
+            result.Message.Should().Contain("Values must not be equal");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
         }
     }
 
@@ -214,7 +224,9 @@ public sealed class NotEqualValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom error message for inequality");
+        result.Message.Should().Contain("Custom error message for inequality");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("ne");
         result.Value.Should().Be("same value");
     }

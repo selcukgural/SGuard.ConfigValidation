@@ -18,11 +18,11 @@ public sealed class EqualsValidator : BaseValidator<object>
         // Return false for null == null (test expectation)
         if (value == null && condition.Value == null)
         {
-            return CreateFailure(condition.Message, string.Empty, value);
+            return CreateFailure(condition.Message, string.Empty, value, condition.Value);
         }
         
         var isEqual = value?.Equals(condition.Value) == true;
         
-        return !isEqual ? CreateFailure(condition.Message, string.Empty, value) : CreateSuccess();
+        return !isEqual ? CreateFailure(condition.Message, string.Empty, value, condition.Value) : CreateSuccess();
     }
 }

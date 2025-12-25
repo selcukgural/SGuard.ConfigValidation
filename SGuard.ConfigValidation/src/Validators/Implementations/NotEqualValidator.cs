@@ -23,6 +23,6 @@ public sealed class NotEqualValidator : BaseValidator<object>
         
         var isEqual = value?.Equals(condition.Value) == true;
         
-        return isEqual ? CreateFailure(condition.Message, string.Empty, value) : CreateSuccess();
+        return isEqual ? CreateFailure(condition.Message, string.Empty, value, condition.Value) : CreateSuccess();
     }
 }

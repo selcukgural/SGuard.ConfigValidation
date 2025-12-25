@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Services;
@@ -16,8 +17,9 @@ public sealed class ConfigLoaderTests : IDisposable
     public ConfigLoaderTests()
     {
         _logger = NullLogger<ConfigLoader>.Instance;
-        _loader = new ConfigLoader(_logger);
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("configloader-test");
+        var securityOptions = Options.Create(new SecurityOptions());
+        _loader = new ConfigLoader(_logger, securityOptions);
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("configloader-test");
     }
 
     [Fact]
@@ -113,7 +115,8 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
         var schemaValidator = new JsonSchemaValidator();
         var logger = NullLogger<ConfigLoader>.Instance;
-        var loader = new ConfigLoader(logger, schemaValidator);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act
         var config = loader.LoadConfig(configPath);
@@ -143,11 +146,12 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
         var schemaValidator = new JsonSchemaValidator();
         var logger = NullLogger<ConfigLoader>.Instance;
-        var loader = new ConfigLoader(logger, schemaValidator);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act & Assert
         var exception = Assert.Throws<ConfigurationException>(() => loader.LoadConfig(configPath));
-        exception.Message.ToLowerInvariant().Should().Contain("does not match the schema", "Exception message should indicate schema validation failure");
+        exception.Message.ToLowerInvariant().Should().Contain("does not match the expected schema", "Exception message should indicate schema validation failure");
     }
 
     [Fact]
@@ -167,7 +171,8 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
         var schemaValidator = new JsonSchemaValidator();
         var logger = NullLogger<ConfigLoader>.Instance;
-        var loader = new ConfigLoader(logger, schemaValidator);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act
         var config = loader.LoadConfig(configPath);
@@ -180,7 +185,7 @@ public sealed class ConfigLoaderTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystemHelper.SafeWriteAllText(filePath, content);
+        SafeFileSystem.SafeWriteAllText(filePath, content);
         return filePath;
     }
 
@@ -197,9 +202,10 @@ environments:
 rules: []
 ");
         var yamlLogger = NullLogger<YamlLoader>.Instance;
-        var yamlLoader = new YamlLoader(yamlLogger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var yamlLoader = new YamlLoader(yamlLogger, securityOptions);
         var logger = NullLogger<ConfigLoader>.Instance;
-        var loader = new ConfigLoader(logger, yamlLoader: yamlLoader);
+        var loader = new ConfigLoader(logger, securityOptions, yamlLoader: yamlLoader);
 
         // Act
         var config = loader.LoadConfig(yamlPath);
@@ -222,9 +228,10 @@ Logging:
   LogLevel: Information
 ");
         var yamlLogger = NullLogger<YamlLoader>.Instance;
-        var yamlLoader = new YamlLoader(yamlLogger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var yamlLoader = new YamlLoader(yamlLogger, securityOptions);
         var logger = NullLogger<ConfigLoader>.Instance;
-        var loader = new ConfigLoader(logger, yamlLoader: yamlLoader);
+        var loader = new ConfigLoader(logger, securityOptions, yamlLoader: yamlLoader);
 
         // Act
         var appSettings = loader.LoadAppSettings(yamlPath);
@@ -237,6 +244,6 @@ Logging:
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }

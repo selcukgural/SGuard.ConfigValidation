@@ -21,7 +21,8 @@ public sealed class ValidatorPluginDiscovery
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> is null.</exception>
     public ValidatorPluginDiscovery(ILogger<ValidatorPluginDiscovery> logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
     }
 
     /// <summary>

@@ -28,21 +28,26 @@ public sealed class GreaterThanOrEqualValidator : BaseValidator<object>
             // Numeric comparison
             return valueNumeric >= conditionNumeric 
                 ? CreateSuccess() 
-                : CreateFailure(condition.Message, string.Empty, value);
+                : CreateFailure(condition.Message, string.Empty, value, condition.Value);
         }
 
         // Use ValueConversionHelper for backward compatibility
         try
         {
-            var comparisonResult = ValueConversionHelper.CompareValues(value, condition.Value);
+            var comparisonResult = ValueConversion.CompareValues(value, condition.Value);
             if (comparisonResult < 0)
             {
-                return CreateFailure(condition.Message, string.Empty, value);
+                return CreateFailure(condition.Message, string.Empty, value, condition.Value);
             }
         }
         catch (ArgumentException)
         {
-            return CreateFailure($"Value for '{ValidatorType}' validator must be comparable", string.Empty, value);
+            return CreateFailure(
+                $"Validation failed: Value for '{ValidatorType}' validator must be comparable. " +
+                $"Actual value type: {value?.GetType().Name ?? "null"}. " +
+                $"Expected value type: {condition.Value?.GetType().Name ?? "null"}. " +
+                "Please ensure both values are numeric or comparable types.",
+                string.Empty, value, condition.Value);
         }
         
         return CreateSuccess();

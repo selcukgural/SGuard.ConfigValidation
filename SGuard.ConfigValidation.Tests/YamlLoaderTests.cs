@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Services;
@@ -14,8 +15,9 @@ public sealed class YamlLoaderTests : IDisposable
     public YamlLoaderTests()
     {
         var logger = NullLogger<YamlLoader>.Instance;
-        _loader = new YamlLoader(logger);
-        _testDirectory = SafeFileSystemHelper.CreateSafeTempDirectory("yamlloader-test");
+        var securityOptions = Options.Create(new SecurityOptions());
+        _loader = new YamlLoader(logger, securityOptions);
+        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("yamlloader-test");
     }
 
     [Fact]
@@ -189,13 +191,13 @@ Database:
     private string CreateTestYamlFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystemHelper.SafeWriteAllText(filePath, content);
+        SafeFileSystem.SafeWriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystemHelper.SafeDeleteDirectory(_testDirectory, recursive: true);
+        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

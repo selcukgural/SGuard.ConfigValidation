@@ -46,4 +46,19 @@ public abstract class BaseValidator<T> : IValidator<T>
     /// <returns>A <see cref="ValidationResult"/> indicating failed validation with detailed information.</returns>
     protected ValidationResult CreateFailure(string message, string key, object? value, Exception? ex = null)
         => ValidationResult.Failure(message, ValidatorType, key, value, ex);
+    
+    /// <summary>
+    /// Creates a failed validation result with detailed information including expected value.
+    /// </summary>
+    /// <param name="message">The base error message describing why the validation failed.</param>
+    /// <param name="key">The configuration key that was validated.</param>
+    /// <param name="actualValue">The actual value that was validated.</param>
+    /// <param name="expectedValue">The expected value for comparison.</param>
+    /// <param name="ex">Optional exception that occurred during validation.</param>
+    /// <returns>A <see cref="ValidationResult"/> indicating failed validation with detailed information.</returns>
+    protected ValidationResult CreateFailure(string message, string key, object? actualValue, object? expectedValue, Exception? ex = null)
+    {
+        var enhancedMessage = ValidationMessageFormatter.FormatValueComparisonError(message, key, actualValue, expectedValue);
+        return ValidationResult.Failure(enhancedMessage, ValidatorType, key, actualValue, ex);
+    }
 }

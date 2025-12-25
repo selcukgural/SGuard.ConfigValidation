@@ -1,9 +1,12 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators;
+using JsonElement = System.Text.Json.JsonElement;
 
 namespace SGuard.ConfigValidation.Services;
 
@@ -16,21 +19,27 @@ public sealed class ConfigLoader : IConfigLoader
     private readonly ISchemaValidator? _schemaValidator;
     private readonly IConfigValidator? _configValidator;
     private readonly IYamlLoader? _yamlLoader;
+    private readonly SecurityOptions _securityOptions;
     private readonly ILogger<ConfigLoader> _logger;
 
     /// <summary>
     /// Initializes a new instance of the ConfigLoader class.
     /// </summary>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="securityOptions">Security options configured via IOptions pattern.</param>
     /// <param name="schemaValidator">Optional schema validator. If provided, configuration files will be validated against the schema.</param>
     /// <param name="configValidator">Optional configuration validator. If provided, configuration structure will be validated.</param>
     /// <param name="yamlLoader">Optional YAML loader. If provided, YAML files will be supported.</param>
-    public ConfigLoader(ILogger<ConfigLoader> logger, ISchemaValidator? schemaValidator = null, IConfigValidator? configValidator = null, IYamlLoader? yamlLoader = null)
+    public ConfigLoader(ILogger<ConfigLoader> logger, IOptions<SecurityOptions> securityOptions, ISchemaValidator? schemaValidator = null, IConfigValidator? configValidator = null, IYamlLoader? yamlLoader = null)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(securityOptions);
+        
+        _logger = logger;
+        _securityOptions = securityOptions.Value;
         _schemaValidator = schemaValidator;
         _configValidator = configValidator;
         _yamlLoader = yamlLoader;
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
         /// <summary>
@@ -53,13 +62,14 @@ public sealed class ConfigLoader : IConfigLoader
             if (string.IsNullOrWhiteSpace(configPath))
             {
                 _logger.LogError("Configuration file path is null or empty");
-                throw new ArgumentException("Configuration file path cannot be null or empty.", nameof(configPath));
+                throw This.ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(configPath));
             }
 
-            if (!SafeFileSystemHelper.SafeFileExists(configPath))
+            if (!SafeFileSystem.FileExists(configPath))
             {
-                _logger.LogError("Configuration file not found: {ConfigPath}", configPath);
-                throw new FileNotFoundException($"Configuration file not found: {configPath}. Please ensure the file exists and the path is correct.", configPath);
+                var fullPath = Path.GetFullPath(configPath);
+                _logger.LogError("Configuration file not found: {ConfigPath} (resolved to: {FullPath})", configPath, fullPath);
+                throw This.FileNotFoundException(configPath, nameof(SR.ConfigurationException_FileNotFound), configPath, fullPath);
             }
 
             // Check if a file is YAML
@@ -71,13 +81,25 @@ public sealed class ConfigLoader : IConfigLoader
 
             try
             {
+                // Check file size before reading to prevent DoS attacks
+                var fileInfo = new FileInfo(configPath);
+                if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
+                {
+                    var fileSizeMB = fileInfo.Length / (1024.0 * 1024.0);
+                    var maxSizeMB = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
+                    _logger.LogError("Configuration file {ConfigPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)", 
+                        configPath, fileInfo.Length, fileSizeMB, _securityOptions.MaxFileSizeBytes, maxSizeMB);
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_FileSizeExceedsLimit), 
+                        configPath, Path.GetFullPath(configPath), fileSizeMB, fileInfo.Length, maxSizeMB, _securityOptions.MaxFileSizeBytes, fileSizeMB - maxSizeMB);
+                }
+
                 _logger.LogDebug("Reading configuration file content from {ConfigPath}", configPath);
-                var json = SafeFileSystemHelper.SafeReadAllText(configPath);
+                var json = SafeFileSystem.SafeReadAllText(configPath);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
-                    _logger.LogError("Configuration file {ConfigPath} is empty", configPath);
-                    throw new ConfigurationException($"Configuration file '{configPath}' is empty.");
+                    _logger.LogError("Configuration file {ConfigPath} is empty (file exists but contains no content)", configPath);
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_FileEmpty), configPath, Path.GetFullPath(configPath));
                 }
 
                 _logger.LogDebug("Configuration file read successfully. File size: {FileSize} bytes", json.Length);
@@ -88,17 +110,17 @@ public sealed class ConfigLoader : IConfigLoader
                     var schemaPath = GetSchemaPath(configPath);
                     _logger.LogDebug("Checking for schema file at {SchemaPath}", schemaPath);
                     
-                    if (SafeFileSystemHelper.SafeFileExists(schemaPath))
+                    if (SafeFileSystem.FileExists(schemaPath))
                     {
                         _logger.LogInformation("Validating configuration against schema {SchemaPath}", schemaPath);
                         var schemaValidationResult = _schemaValidator.ValidateAgainstFile(json, schemaPath);
                         
                         if (!schemaValidationResult.IsValid)
                         {
-                            _logger.LogError("Schema validation failed for {ConfigPath}. Errors: {Errors}", 
-                                configPath, schemaValidationResult.ErrorMessage);
-                            throw new ConfigurationException(
-                                $"Configuration file '{configPath}' does not match the schema. Errors:{System.Environment.NewLine}{schemaValidationResult.ErrorMessage}");
+                            _logger.LogError("Schema validation failed for {ConfigPath} against schema {SchemaPath}. Errors: {Errors}", 
+                                configPath, schemaPath, schemaValidationResult.ErrorMessage);
+                            throw This.ConfigurationException(nameof(SR.ConfigurationException_SchemaValidationFailed), 
+                                configPath, Path.GetFullPath(configPath), schemaPath, Path.GetFullPath(schemaPath), System.Environment.NewLine, schemaValidationResult.ErrorMessage);
                         }
                         
                         _logger.LogDebug("Schema validation passed for {ConfigPath}", configPath);
@@ -118,8 +140,9 @@ public sealed class ConfigLoader : IConfigLoader
                 
                 if (config == null)
                 {
-                    _logger.LogError("Failed to deserialize configuration from {ConfigPath}", configPath);
-                    throw new ConfigurationException($"Failed to deserialize configuration from '{configPath}'. The file may be malformed.");
+                    _logger.LogError("Failed to deserialize configuration from {ConfigPath}. JSON deserialization returned null", configPath);
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_DeserializationReturnedNull), 
+                        configPath, Path.GetFullPath(configPath), json.Length);
                 }
 
                 _logger.LogDebug("Configuration deserialized successfully. Found {EnvironmentCount} environments and {RuleCount} rules", 
@@ -127,14 +150,35 @@ public sealed class ConfigLoader : IConfigLoader
 
                 if (config.Environments == null || config.Environments.Count == 0)
                 {
-                    _logger.LogError("Configuration file {ConfigPath} contains no environments", configPath);
-                    throw new ConfigurationException($"Configuration file '{configPath}' must contain at least one environment definition.");
+                    _logger.LogError("Configuration file {ConfigPath} contains no environments. Found {RuleCount} rules", configPath, config.Rules?.Count ?? 0);
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_NoEnvironments), 
+                        configPath, Path.GetFullPath(configPath), config.Rules?.Count ?? 0);
+                }
+
+                // Validate environment count to prevent DoS attacks
+                if (config.Environments.Count > _securityOptions.MaxEnvironmentsCount)
+                {
+                    _logger.LogError("Configuration file {ConfigPath} contains too many environments. Count: {Count}, Limit: {Limit}", 
+                        configPath, config.Environments.Count, _securityOptions.MaxEnvironmentsCount);
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_EnvironmentCountExceedsLimit), 
+                        configPath, Path.GetFullPath(configPath), config.Environments.Count, _securityOptions.MaxEnvironmentsCount, config.Environments.Count - _securityOptions.MaxEnvironmentsCount);
                 }
 
                 if (config.Rules == null)
                 {
                     _logger.LogDebug("No rules found in configuration, initializing empty rules list");
                     config.Rules = [];
+                }
+                else
+                {
+                    // Validate rule count to prevent DoS attacks
+                    if (config.Rules.Count > _securityOptions.MaxRulesCount)
+                    {
+                        _logger.LogError("Configuration file {ConfigPath} contains too many rules. Count: {Count}, Limit: {Limit}", 
+                            configPath, config.Rules.Count, _securityOptions.MaxRulesCount);
+                        throw This.ConfigurationException(nameof(SR.ConfigurationException_RuleCountExceedsLimit), 
+                            configPath, Path.GetFullPath(configPath), config.Rules.Count, _securityOptions.MaxRulesCount, config.Rules.Count - _securityOptions.MaxRulesCount);
+                    }
                 }
 
                 // Validate configuration structure and integrity
@@ -148,10 +192,10 @@ public sealed class ConfigLoader : IConfigLoader
                     if (validationErrors.Count > 0)
                     {
                         var errorMessage = string.Join(System.Environment.NewLine, validationErrors);
-                        _logger.LogError("Configuration validation failed for {ConfigPath}. Errors: {Errors}", 
-                            configPath, errorMessage);
-                        throw new ConfigurationException(
-                            $"Configuration file '{configPath}' validation failed:{System.Environment.NewLine}{errorMessage}");
+                        _logger.LogError("Configuration structure validation failed for {ConfigPath}. Found {ErrorCount} error(s). Errors: {Errors}", 
+                            configPath, validationErrors.Count, errorMessage);
+                        throw This.ConfigurationException(nameof(SR.ConfigurationException_StructureValidationFailed), 
+                            validationErrors.Count, configPath, Path.GetFullPath(configPath), System.Environment.NewLine, errorMessage);
                     }
                     
                     _logger.LogDebug("Configuration structure validation passed");
@@ -168,29 +212,35 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Invalid JSON format in configuration file {ConfigPath}", configPath);
-                throw new ConfigurationException($"Invalid JSON format in configuration file '{configPath}': {ex.Message}", ex);
+                var lineNumber = ex.LineNumber > 0 ? $"Line {ex.BytePositionInLine / 1024 + 1}" : "unknown line";
+                _logger.LogError(ex, "Invalid JSON format in configuration file {ConfigPath}. Error at {LineNumber}: {ErrorMessage}", 
+                    configPath, lineNumber, ex.Message);
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_InvalidJsonFormat), ex, 
+                    configPath, Path.GetFullPath(configPath), ex.Message, lineNumber);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Error reading configuration file {ConfigPath}", configPath);
-                throw new ConfigurationException($"Error reading configuration file '{configPath}': {ex.Message}", ex);
+                _logger.LogError(ex, "I/O error reading configuration file {ConfigPath}. Error: {ErrorMessage}", configPath, ex.Message);
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_IOException), ex, 
+                    configPath, Path.GetFullPath(configPath), ex.Message);
             }
             catch (ConfigurationException)
             {
-                // Re-throw ConfigurationException as-is (already logged)
+                // Re-throw ConfigurationException as-is (already logged with detailed context)
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error loading configuration from {ConfigPath}", configPath);
-                throw new ConfigurationException($"Unexpected error loading configuration from '{configPath}': {ex.Message}", ex);
+                _logger.LogError(ex, "Unexpected error loading configuration from {ConfigPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
+                    configPath, ex.GetType().Name, ex.Message);
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_UnexpectedError), ex, 
+                    configPath, Path.GetFullPath(configPath), ex.GetType().Name, ex.Message);
             }
         }
 
         /// <summary>
         /// Loads app settings from the specified file path and flattens them into a dictionary.
-        /// Supports both JSON and YAML files (if YAML loader is provided).
+        /// Supports both JSON and YAML files (if the YAML loader is provided).
         /// Nested JSON objects are flattened with colon-separated keys (e.g., "Logging:LogLevel:Default").
         /// </summary>
         /// <param name="appSettingsPath">The path to the app settings file (JSON or YAML).</param>
@@ -207,13 +257,14 @@ public sealed class ConfigLoader : IConfigLoader
             if (string.IsNullOrWhiteSpace(appSettingsPath))
             {
                 _logger.LogError("AppSettings file path is null or empty");
-                throw new ArgumentException("AppSettings file path cannot be null or empty.", nameof(appSettingsPath));
+                throw This.ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(appSettingsPath));
             }
 
-            if (!SafeFileSystemHelper.SafeFileExists(appSettingsPath))
+            if (!SafeFileSystem.FileExists(appSettingsPath))
             {
-                _logger.LogError("AppSettings file not found: {AppSettingsPath}", appSettingsPath);
-                throw new FileNotFoundException($"AppSettings file not found: {appSettingsPath}. Please ensure the file exists and the path is correct.", appSettingsPath);
+                var fullPath = Path.GetFullPath(appSettingsPath);
+                _logger.LogError("AppSettings file not found: {AppSettingsPath} (resolved to: {FullPath})", appSettingsPath, fullPath);
+                throw This.FileNotFoundException(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), appSettingsPath, fullPath);
             }
 
             // Check if a file is YAML
@@ -225,8 +276,20 @@ public sealed class ConfigLoader : IConfigLoader
 
             try
             {
-                // Get file size to determine if we should use streaming
+                // Check file size before reading to prevent DoS attacks
                 var fileInfo = new FileInfo(appSettingsPath);
+                if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
+                {
+                    var fileSizeMB = fileInfo.Length / (1024.0 * 1024.0);
+                    var maxSizeMB = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
+                    _logger.LogError("AppSettings file {AppSettingsPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)", 
+                        appSettingsPath, fileInfo.Length, fileSizeMB, _securityOptions.MaxFileSizeBytes, maxSizeMB);
+                    
+                    throw This.ConfigurationException(nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit), 
+                        appSettingsPath, Path.GetFullPath(appSettingsPath), fileSizeMB, fileInfo.Length, maxSizeMB, _securityOptions.MaxFileSizeBytes, fileSizeMB - maxSizeMB);
+                }
+
+                // Get file size to determine if we should use streaming
                 var useStreaming = fileInfo.Length > SharedConstants.StreamingThresholdBytes;
 
                 if (useStreaming)
@@ -236,7 +299,7 @@ public sealed class ConfigLoader : IConfigLoader
                 }
 
                 _logger.LogDebug("Reading app settings file content from {AppSettingsPath}", appSettingsPath);
-                var json = SafeFileSystemHelper.SafeReadAllText(appSettingsPath);
+                var json = SafeFileSystem.SafeReadAllText(appSettingsPath);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
@@ -267,18 +330,27 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Invalid JSON format in AppSettings file {AppSettingsPath}", appSettingsPath);
-                throw new ConfigurationException($"Invalid JSON format in AppSettings file '{appSettingsPath}': {ex.Message}", ex);
+                var lineNumber = ex.LineNumber > 0 ? $"Line {ex.BytePositionInLine / 1024 + 1}" : "unknown line";
+                _logger.LogError(ex, "Invalid JSON format in AppSettings file {AppSettingsPath}. Error at {LineNumber}: {ErrorMessage}", 
+                    appSettingsPath, lineNumber, ex.Message);
+                
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_AppSettingsInvalidJsonFormat), ex, 
+                    appSettingsPath, Path.GetFullPath(appSettingsPath), ex.Message, lineNumber);
             }
             catch (IOException ex)
             {
-                _logger.LogError(ex, "Error reading AppSettings file {AppSettingsPath}", appSettingsPath);
-                throw new ConfigurationException($"Error reading AppSettings file '{appSettingsPath}': {ex.Message}", ex);
+                _logger.LogError(ex, "I/O error reading AppSettings file {AppSettingsPath}. Error: {ErrorMessage}", appSettingsPath, ex.Message);
+                
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_AppSettingsIOException), ex, 
+                    appSettingsPath, Path.GetFullPath(appSettingsPath), ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error loading app settings from {AppSettingsPath}", appSettingsPath);
-                throw new ConfigurationException($"Unexpected error loading app settings from '{appSettingsPath}': {ex.Message}", ex);
+                _logger.LogError(ex, "Unexpected error loading app settings from {AppSettingsPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
+                    appSettingsPath, ex.GetType().Name, ex.Message);
+                
+                throw This.ConfigurationException(nameof(SR.ConfigurationException_AppSettingsUnexpectedError), ex, 
+                    appSettingsPath, Path.GetFullPath(appSettingsPath), ex.GetType().Name, ex.Message);
             }
         }
 
@@ -367,11 +439,11 @@ public sealed class ConfigLoader : IConfigLoader
         };
 
         // Return the first existing schema file, or the first one as default
-        var schemaPath = possibleSchemaPaths.FirstOrDefault(SafeFileSystemHelper.SafeFileExists) 
+        var schemaPath = possibleSchemaPaths.FirstOrDefault(path => SafeFileSystem.FileExists(path)) 
                         ?? possibleSchemaPaths[0];
         
         _logger.LogDebug("Resolved schema path: {SchemaPath} (exists: {Exists})", 
-            schemaPath, SafeFileSystemHelper.SafeFileExists(schemaPath));
+            schemaPath, SafeFileSystem.FileExists(schemaPath));
 
         return schemaPath;
     }

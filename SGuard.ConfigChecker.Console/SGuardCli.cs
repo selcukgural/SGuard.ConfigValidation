@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Output;
 using SGuard.ConfigValidation.Services;
+using System.Runtime.InteropServices;
 
 namespace SGuard.ConfigChecker.Console;
 
@@ -13,21 +14,29 @@ public sealed class SGuardCli
 {
     private readonly IRuleEngine _ruleEngine;
     private readonly ILogger<SGuardCli> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IOutputFormatter _outputFormatter;
     private readonly RootCommand _rootCommand;
     private static readonly string[] First = ["validate"];
+    private static readonly string[] ValidFormats = ["json", "text", "console"];
 
     /// <summary>
     /// Initializes a new instance of the SGuardCli class.
     /// </summary>
     /// <param name="ruleEngine">The rule engine service.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="loggerFactory">Logger factory for creating loggers.</param>
     /// <param name="outputFormatter">Optional output formatter. Defaults to ConsoleOutputFormatter.</param>
-    public SGuardCli(IRuleEngine ruleEngine, ILogger<SGuardCli> logger, IOutputFormatter? outputFormatter = null)
+    public SGuardCli(IRuleEngine ruleEngine, ILogger<SGuardCli> logger, ILoggerFactory loggerFactory, IOutputFormatter? outputFormatter = null)
     {
-        _ruleEngine = ruleEngine ?? throw new ArgumentNullException(nameof(ruleEngine));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _outputFormatter = outputFormatter ?? new ConsoleOutputFormatter();
+        ArgumentNullException.ThrowIfNull(ruleEngine);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        
+        _ruleEngine = ruleEngine;
+        _logger = logger;
+        _loggerFactory = loggerFactory;
+        _outputFormatter = outputFormatter ?? new ConsoleOutputFormatter(loggerFactory.CreateLogger<ConsoleOutputFormatter>());
         _rootCommand = CreateRootCommand();
     }
 
@@ -81,7 +90,33 @@ public sealed class SGuardCli
                 configPath = "sguard.json";
             }
 
+            // Sanitize and validate config path
+            var configPathValidation = ValidateAndSanitizePath(configPath, "config path", _logger);
+
+            if (!configPathValidation.IsValid)
+            {
+                await System.Console.Error.WriteLineAsync($"Invalid config path: {configPathValidation.ErrorMessage}");
+                return (int)ExitCode.SystemError;
+            }
+
+            configPath = configPathValidation.SanitizedPath;
+
             var environmentId = parseResult.GetValue(envOption);
+
+            // Sanitize and validate environment ID if provided
+            if (!string.IsNullOrWhiteSpace(environmentId))
+            {
+                var envIdValidation = ValidateAndSanitizeEnvironmentId(environmentId, _logger);
+
+                if (!envIdValidation.IsValid)
+                {
+                    await System.Console.Error.WriteLineAsync($"Invalid environment ID: {envIdValidation.ErrorMessage}");
+                    return (int)ExitCode.SystemError;
+                }
+
+                environmentId = envIdValidation.SanitizedId;
+            }
+
             var allEnvironments = parseResult.GetValue(allOption);
 
             var outputFormat = parseResult.GetValue(outputOption);
@@ -96,9 +131,7 @@ public sealed class SGuardCli
             // Validate output format
             if (!string.IsNullOrWhiteSpace(outputFormat))
             {
-                var validFormats = new[] { "json", "text", "console" };
-
-                if (!validFormats.Contains(outputFormat.ToLowerInvariant()))
+                if (!ValidFormats.Contains(outputFormat.ToLowerInvariant()))
                 {
                     await System.Console.Error.WriteLineAsync($"Invalid output format: {outputFormat}. Supported formats: json, text, console");
                     return (int)ExitCode.SystemError;
@@ -108,8 +141,12 @@ public sealed class SGuardCli
             // Check for --env and --all conflict
             if (allEnvironments && !string.IsNullOrWhiteSpace(environmentId))
             {
-                await System.Console.Error.WriteLineAsync(
-                    "Error: Cannot specify both --env and --all options. Use --all to validate all environments or --env to validate a specific environment.");
+                _logger.LogError("Invalid command-line arguments: Both --env and --all options specified. Environment ID: {EnvironmentId}",
+                                 environmentId);
+
+                await System.Console.Error.WriteLineAsync("Error: Invalid command-line arguments. " +
+                                                          $"Cannot specify both --env ('{environmentId}') and --all options simultaneously. " +
+                                                          "Please use either --all to validate all environments or --env to validate a specific environment, but not both.");
                 return (int)ExitCode.SystemError;
             }
 
@@ -160,7 +197,9 @@ public sealed class SGuardCli
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "💥 Fatal error during CLI execution");
+            _logger.LogError(ex, "Fatal error during CLI execution. Exception type: {ExceptionType}, Message: {ErrorMessage}", ex.GetType().Name,
+                             ex.Message);
+            
             return ExitCode.SystemError;
         }
     }
@@ -178,7 +217,7 @@ public sealed class SGuardCli
 
         // Get the appropriate output formatter
         var formatter = !outputFormat.Equals("console", StringComparison.InvariantCultureIgnoreCase)
-                            ? OutputFormatterFactory.Create(outputFormat)
+                            ? OutputFormatterFactory.Create(outputFormat, _loggerFactory)
                             : _outputFormatter;
 
         try
@@ -211,7 +250,11 @@ public sealed class SGuardCli
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "💥 Fatal error during validation");
+            _logger.LogError(
+                ex,
+                "Fatal error during validation. Exception type: {ExceptionType}, Message: {ErrorMessage}, Config path: {ConfigPath}, Environment: {EnvironmentId}",
+                ex.GetType().Name, ex.Message, configPath, environmentId ?? "all");
+            
             return ExitCode.SystemError;
         }
     }
@@ -219,5 +262,135 @@ public sealed class SGuardCli
     private static bool IsJsonContent(string pathOrContent)
     {
         return pathOrContent.StartsWith('{') || pathOrContent.Contains("\"version\"");
+    }
+
+    /// <summary>
+    /// Validates and sanitizes a file path input.
+    /// Prevents path traversal attacks and dangerous characters.
+    /// </summary>
+    /// <param name="path">The path to validate.</param>
+    /// <param name="parameterName">The name of the parameter for error messages.</param>
+    /// <param name="logger">Logger instance for logging warnings.</param>
+    /// <returns>A validation result with sanitized path or error message.</returns>
+    private static (bool IsValid, string SanitizedPath, string ErrorMessage) ValidateAndSanitizePath(
+        string path, string parameterName, ILogger<SGuardCli> logger)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return (false, path,
+                    $"Input validation failed: {parameterName} is required but was null or empty. " + "Please provide a valid file path.");
+        }
+
+        // Check for path traversal attempts
+        if (path.Contains("..", StringComparison.Ordinal) || path.Contains("//", StringComparison.Ordinal) ||
+            (path.Length > 1 && path[0] == '/' && path[1] == '.'))
+        {
+            logger.LogWarning("Path traversal attempt detected in {ParameterName}: {Path}", parameterName, path);
+
+            return (false, path,
+                    $"Input validation failed: Path traversal attempt detected in {parameterName}. " + $"Path value: '{path}'. " +
+                    "Paths containing '..' (parent directory references) or '//' (consecutive separators) are not allowed for security reasons. " +
+                    "Please use a valid relative or absolute path without path traversal sequences.");
+        }
+
+        // Check for dangerous characters (null bytes, control characters)
+        if (path.Contains('\0') || path.Any(c => char.IsControl(c) && c != '\t' && c != '\n' && c != '\r'))
+        {
+            logger.LogWarning("Dangerous characters detected in {ParameterName}: {Path}", parameterName, path);
+            
+            var dangerousChars = path.Where(c => char.IsControl(c) && c != '\t' && c != '\n' && c != '\r').Distinct().ToList();
+
+            var charInfo = dangerousChars.Count > 0
+                               ? $" Control characters found: {string.Join(", ", dangerousChars.Select(c => $"U+{(int)c:X4}"))}."
+                               : "";
+
+            return (false, path,
+                    $"Input validation failed: Dangerous characters detected in {parameterName}. " + $"Path value: '{path}'.{charInfo} " +
+                    "Control characters (except tab, newline, carriage return) are not allowed in file paths. " +
+                    "Please remove any control characters from the path.");
+        }
+
+        // Check path length (prevent DoS through extremely long paths)
+        if (path.Length > SecurityConstants.MaxPathLengthHardLimit)
+        {
+            logger.LogWarning("Path length exceeds maximum limit in {ParameterName}: {Length} characters", parameterName, path.Length);
+
+            return (false, path,
+                    $"Input validation failed: Path length exceeds maximum limit. " + $"Path value: '{path}'. " +
+                    $"Actual length: {path.Length} characters. " + $"Maximum allowed: {SecurityConstants.MaxPathLengthHardLimit} characters. " +
+                    $"Exceeded by: {path.Length - SecurityConstants.MaxPathLengthHardLimit} characters. " +
+                    "Please shorten the path or contact your administrator to adjust the security limits.");
+        }
+
+        // Sanitize: Remove leading/trailing whitespace and normalize path separators
+        var sanitized = path.Trim();
+
+        // Normalize path separators (Windows accepts both / and \)
+        sanitized = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? sanitized.Replace('/', '\\') : sanitized.Replace('\\', '/');
+
+        return (true, sanitized, string.Empty);
+    }
+
+    /// <summary>
+    /// Validates and sanitizes an environment ID input.
+    /// Prevents injection attacks and ensures a valid format.
+    /// </summary>
+    /// <param name="environmentId">The environment ID to validate.</param>
+    /// <param name="logger">Logger instance for logging warnings.</param>
+    /// <returns>A validation result with sanitized ID or error message.</returns>
+    private static (bool IsValid, string SanitizedId, string ErrorMessage) ValidateAndSanitizeEnvironmentId(
+        string environmentId, ILogger<SGuardCli> logger)
+    {
+        if (string.IsNullOrWhiteSpace(environmentId))
+        {
+            return (false, environmentId,
+                    "Input validation failed: Environment ID is required but was null or empty. " + "Please provide a valid environment ID.");
+        }
+
+        // Check for dangerous characters
+        if (environmentId.Contains('\0') || environmentId.Any(char.IsControl))
+        {
+            logger.LogWarning("Dangerous characters detected in environment ID: {EnvironmentId}", environmentId);
+            
+            var dangerousChars = environmentId.Where(char.IsControl).Distinct().ToList();
+
+            var charInfo = dangerousChars.Count > 0
+                               ? $" Control characters found: {string.Join(", ", dangerousChars.Select(c => $"U+{(int)c:X4}"))}."
+                               : "";
+
+            return (false, environmentId,
+                    $"Input validation failed: Environment ID contains dangerous characters. " +
+                    $"Environment ID value: '{environmentId}'.{charInfo} " + "Control characters are not allowed in environment IDs. " +
+                    "Please remove any control characters from the environment ID.");
+        }
+
+        // Check length (reasonable limit for IDs)
+        if (environmentId.Length > 256)
+        {
+            logger.LogWarning("Environment ID length exceeds maximum limit: {Length} characters", environmentId.Length);
+
+            return (false, environmentId,
+                    $"Input validation failed: Environment ID length exceeds maximum limit. " + $"Environment ID value: '{environmentId}'. " +
+                    $"Actual length: {environmentId.Length} characters. " + $"Maximum allowed: 256 characters. " +
+                    $"Exceeded by: {environmentId.Length - 256} characters. " + "Please shorten the environment ID.");
+        }
+
+        // Sanitize: Remove leading/trailing whitespace
+        var sanitized = environmentId.Trim();
+
+        // Validate a format: alphanumeric, dash, underscore only (common ID patterns)
+        // Allow more flexible format but log if unusual characters are detected
+        var hasUnusualChars = sanitized.Any(c => !char.IsLetterOrDigit(c) && c != '-' && c != '_' && c != '.');
+        if (!hasUnusualChars)
+        {
+            return (true, sanitized, string.Empty);
+        }
+        
+        logger.LogWarning("Unusual characters detected in environment ID: {EnvironmentId}", environmentId);
+        
+        // Don't reject, but sanitize by removing dangerous characters
+        sanitized = new string(sanitized.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.').ToArray());
+
+        return (true, sanitized, string.Empty);
     }
 }

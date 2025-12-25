@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Services;
@@ -34,7 +35,8 @@ public class BenchmarkTests
         Directory.CreateDirectory(_tempDirectory);
 
         var logger = NullLogger<ConfigLoader>.Instance;
-        _configLoader = new ConfigLoader(logger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        _configLoader = new ConfigLoader(logger, securityOptions);
 
         var validatorFactoryLogger = NullLogger<ValidatorFactory>.Instance;
         _validatorFactory = new ValidatorFactory(validatorFactoryLogger);

@@ -1,11 +1,12 @@
 using System.Text.Json;
+using SGuard.ConfigValidation.Resources;
 
 namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
 /// Helper class for converting JsonElement and other types to int32.
 /// </summary>
-public static class JsonElementHelper
+public static class JsonElement
 {
     /// <summary>
     /// Attempts to convert a value to int32. Supports JsonElement (Number/String), int, and string types.
@@ -20,9 +21,9 @@ public static class JsonElementHelper
 
         switch (value)
         {
-            case JsonElement { ValueKind: JsonValueKind.Number } element:
+            case System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element:
                 return element.TryGetInt32(out result);
-            case JsonElement { ValueKind: JsonValueKind.String } element when int.TryParse(element.GetString(), out var parsed):
+            case System.Text.Json.JsonElement { ValueKind: JsonValueKind.String } element when int.TryParse(element.GetString(), out var parsed):
                 result = parsed;
                 return true;
             case int intValue:
@@ -45,7 +46,7 @@ public static class JsonElementHelper
     /// <exception cref="InvalidOperationException">Thrown when conversion fails.</exception>
     public static int GetInt32(object? value, string validatorType)
     {
-        return TryGetInt32(value, out var result) ? result : throw new InvalidOperationException($"Cannot convert value '{value}' to int for {validatorType} validator");
+        return !TryGetInt32(value, out var result) ? throw This.InvalidOperationException(nameof(SR.InvalidOperationException_CannotConvertToInt), value ?? "null", validatorType) : result;
     }
 }
 

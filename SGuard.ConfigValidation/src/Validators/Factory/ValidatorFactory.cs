@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging;
+using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators.Plugin;
 
 namespace SGuard.ConfigValidation.Validators;
@@ -35,7 +37,8 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// <param name="pluginDirectories">Optional list of directories to scan for validator plugins.</param>
     public ValidatorFactory(ILogger<ValidatorFactory> logger, ValidatorPluginDiscovery? pluginDiscovery = null, IEnumerable<string>? pluginDirectories = null)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
         
         // Start with built-in validators
         var validators = new Dictionary<string, IValidator<object>>(BuiltInValidators, StringComparer.OrdinalIgnoreCase);
@@ -73,6 +76,8 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// <exception cref="NotSupportedException">Thrown when the validator type is not supported.</exception>
     public IValidator<object> GetValidator(string validatorType)
     {
+        ArgumentNullException.ThrowIfNull(validatorType);
+        
         // Fast path: direct lookup with optimized exception message
         if (_validators.TryGetValue(validatorType, out var validator))
         {
@@ -80,7 +85,7 @@ public sealed class ValidatorFactory : IValidatorFactory
         }
         
         // Slow path: throw exception with cached message
-        throw new NotSupportedException($"Validator type '{validatorType}' is not supported. Supported validators: {_supportedValidatorsString}");
+        throw This.NotSupportedException(nameof(SR.NotSupportedException_ValidatorTypeNotSupported), validatorType, _supportedValidatorsString);
     }
 
     /// <summary>

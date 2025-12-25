@@ -44,7 +44,9 @@ public sealed class MinLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String is too short");
+            result.Message.Should().Contain("String is too short");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("minimum length");
             result.ValidatorType.Should().Be("min_len");
         }
         else
@@ -97,7 +99,9 @@ public sealed class MinLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String is too short");
+            result.Message.Should().Contain("String is too short");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("minimum length");
         }
         else
         {
@@ -127,7 +131,9 @@ public sealed class MinLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String is too short");
+            result.Message.Should().Contain("String is too short");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("minimum length");
             result.ValidatorType.Should().Be("min_len");
         }
         else
@@ -224,7 +230,9 @@ public sealed class MinLengthValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom min length error message");
+        result.Message.Should().Contain("Custom min length error message");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("minimum length");
         result.ValidatorType.Should().Be("min_len");
         result.Value.Should().Be("hi");
     }
@@ -270,7 +278,9 @@ public sealed class MinLengthValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("String is too short");
+            result.Message.Should().Contain("String is too short");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("minimum length");
             result.ValidatorType.Should().Be("min_len");
         }
         else

@@ -25,9 +25,17 @@ public sealed class MinLengthValidator : BaseValidator<object>
         if (!conditionTypedValue.TryGetInt32(out minLength))
         {
             // Use JsonElementHelper for backward compatibility (may throw exception)
-            minLength = JsonElementHelper.GetInt32(condition.Value, ValidatorType);
+            minLength = JsonElement.GetInt32(condition.Value, ValidatorType);
         }
 
-        return stringValue.Length < minLength ? CreateFailure(condition.Message, string.Empty, value) : CreateSuccess();
+        if (stringValue.Length < minLength)
+        {
+            return CreateFailure(
+                condition.Message, 
+                string.Empty, 
+                value, 
+                $"minimum length of {minLength} characters (actual length: {stringValue.Length})");
+        }
+        return CreateSuccess();
     }
 }

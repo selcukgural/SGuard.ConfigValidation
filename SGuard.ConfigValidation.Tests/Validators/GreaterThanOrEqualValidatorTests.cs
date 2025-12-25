@@ -45,7 +45,9 @@ public sealed class GreaterThanOrEqualValidatorTests
         result.IsValid.Should().Be(expectedValid);
         if (!expectedValid)
         {
-            result.Message.Should().Be("Value must be greater than or equal to threshold");
+            result.Message.Should().Contain("Value must be greater than or equal to threshold");
+            result.Message.Should().Contain("Actual value:");
+            result.Message.Should().Contain("Expected value:");
             result.ValidatorType.Should().Be("gte");
         }
         else
@@ -177,7 +179,9 @@ public sealed class GreaterThanOrEqualValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Custom greater than or equal error message");
+        result.Message.Should().Contain("Custom greater than or equal error message");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("Expected value:");
         result.ValidatorType.Should().Be("gte");
         result.Value.Should().Be(5);
     }
@@ -262,7 +266,9 @@ public sealed class GreaterThanOrEqualValidatorTests
         result1.Message.Should().BeEmpty();
         
         result2.IsValid.Should().BeFalse();
-        result2.Message.Should().Be("Value must be greater than or equal to threshold");
+        result2.Message.Should().Contain("Value must be greater than or equal to threshold");
+        result2.Message.Should().Contain("Actual value:");
+        result2.Message.Should().Contain("Expected value:");
         result2.ValidatorType.Should().Be("gte");
         
         result3.IsValid.Should().BeTrue(); // equal should pass

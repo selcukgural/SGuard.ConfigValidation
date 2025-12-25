@@ -66,7 +66,9 @@ public sealed class InValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse(); // "test" is not in array
-        result.Message.Should().Be("Environment must be one of: dev, staging, prod");
+        result.Message.Should().Contain("Environment must be one of: dev, staging, prod");
+        result.Message.Should().Contain("Actual value:");
+        result.Message.Should().Contain("one of:");
         result.ValidatorType.Should().Be("in");
     }
 
@@ -92,7 +94,9 @@ public sealed class InValidatorTests
         result1.Message.Should().BeEmpty();
 
         result2.IsValid.Should().BeFalse();
-        result2.Message.Should().Be("Base URL must be one of the allowed values");
+        result2.Message.Should().Contain("Base URL must be one of the allowed values");
+        result2.Message.Should().Contain("Actual value:");
+        result2.Message.Should().Contain("one of:");
         result2.ValidatorType.Should().Be("in");
     }
 
@@ -122,7 +126,9 @@ public sealed class InValidatorTests
         result2.Message.Should().BeEmpty();
 
         result3.IsValid.Should().BeFalse();
-        result3.Message.Should().Be("Environment must be one of: DEV, STAGING, PROD");
+        result3.Message.Should().Contain("Environment must be one of: DEV, STAGING, PROD");
+        result3.Message.Should().Contain("Actual value:");
+        result3.Message.Should().Contain("one of:");
         result3.ValidatorType.Should().Be("in");
     }
 }

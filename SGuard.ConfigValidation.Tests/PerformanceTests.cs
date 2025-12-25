@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using Xunit.Abstractions;
@@ -31,7 +33,8 @@ public sealed class PerformanceTests : IDisposable
         File.WriteAllText(filePath, largeJson);
         
         var logger = NullLogger<ConfigLoader>.Instance;
-        var configLoader = new ConfigLoader(logger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var configLoader = new ConfigLoader(logger, securityOptions);
 
         // Act
         var stopwatch = Stopwatch.StartNew();
@@ -59,7 +62,8 @@ public sealed class PerformanceTests : IDisposable
         fileInfo.Length.Should().BeGreaterThan(1024 * 1024, "File should be larger than 1MB to test streaming");
         
         var logger = NullLogger<ConfigLoader>.Instance;
-        var configLoader = new ConfigLoader(logger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var configLoader = new ConfigLoader(logger, securityOptions);
 
         // Act
         var stopwatch = Stopwatch.StartNew();
@@ -166,7 +170,8 @@ public sealed class PerformanceTests : IDisposable
         File.WriteAllText(filePath, configJson);
         
         var logger = NullLogger<ConfigLoader>.Instance;
-        var configLoader = new ConfigLoader(logger);
+        var securityOptions = Options.Create(new SecurityOptions());
+        var configLoader = new ConfigLoader(logger, securityOptions);
 
         // Act
         var stopwatch = Stopwatch.StartNew();
