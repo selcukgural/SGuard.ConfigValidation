@@ -122,16 +122,11 @@ public static class PathSecurity
             var fullPath = Path.GetFullPath(path);
 
             // Normalize path separators
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                // Windows: Use backslash as a separator
-                return fullPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
-            }
-            else
-            {
-                // Unix-like: Use forward slash as a separator
-                return fullPath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            }
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
+                       // Windows: Use backslash as a separator
+                       fullPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) :
+                       // Unix-like: Use forward slash as a separator
+                       fullPath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
         catch
         {

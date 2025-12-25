@@ -113,11 +113,9 @@ public sealed class JsonSchemaValidator : ISchemaValidator
                 {
                     return ValidateWithSchema(jsonContent, cached.Schema);
                 }
-                else
-                {
-                    // File changed, remove from cache
-                    _schemaCache.TryRemove(schemaPath, out _);
-                }
+
+                // File changed, remove from cache
+                _schemaCache.TryRemove(schemaPath, out _);
             }
 
             // Load schema from file
