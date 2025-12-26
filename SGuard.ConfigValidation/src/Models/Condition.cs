@@ -22,5 +22,5 @@ public sealed class Condition
     /// Multiple validators can be applied to the same key (e.g., "required" and "min_len").
     /// </summary>
     [JsonPropertyName("condition")]
-    public required List<ValidatorCondition> Validators { get; init; } = [];
+    public required List<ValidatorCondition> Validators { get; init; }
 }

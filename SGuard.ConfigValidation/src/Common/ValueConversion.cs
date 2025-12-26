@@ -1,4 +1,5 @@
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Common;
 
@@ -65,7 +66,7 @@ public static class ValueConversion
     {
         if (conditionValue == null)
         {
-            throw This.ArgumentException(nameof(SR.ArgumentException_ConditionValueNull), nameof(conditionValue));
+            throw ArgumentException(nameof(SR.ArgumentException_ConditionValueNull), nameof(conditionValue));
         }
 
         // Try to convert both to double for numeric comparison
@@ -80,7 +81,7 @@ public static class ValueConversion
             return comparableValue.CompareTo(comparableCondition);
         }
 
-        throw This.ArgumentException(nameof(SR.ArgumentException_ValuesNotComparable), nameof(value));
+        throw ArgumentException(nameof(SR.ArgumentException_ValuesNotComparable), nameof(value));
     }
 }
 

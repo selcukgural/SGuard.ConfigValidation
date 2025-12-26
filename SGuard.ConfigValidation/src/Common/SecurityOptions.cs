@@ -12,8 +12,8 @@ public sealed class SecurityOptions
 {
     /// <summary>
     /// Maximum allowed file size in bytes.
-    /// Default: 100 MB (104857600 bytes)
-    /// Hard limit: 500 MB (524288000 bytes)
+    /// Default: 100 MB (104,857,600 bytes)
+    /// Hard limit: 500 MB (524,288,000 bytes)
     /// Files larger than this will be rejected to prevent DoS attacks.
     /// </summary>
     public long MaxFileSizeBytes { get; set; } = SecurityConstants.MaxFileSizeBytes;
@@ -28,7 +28,7 @@ public sealed class SecurityOptions
 
     /// <summary>
     /// Maximum number of rules allowed in a configuration file.
-    /// Default: 10000
+    /// Default: 10,000
     /// Hard limit: 50000
     /// Prevents DoS attacks through excessive rule definitions.
     /// </summary>
@@ -52,8 +52,8 @@ public sealed class SecurityOptions
 
     /// <summary>
     /// Maximum number of entries allowed in the path resolver cache.
-    /// Default: 10000
-    /// Hard limit: 100000
+    /// Default: 10,000
+    /// Hard limit: 100 thousand
     /// Prevents memory exhaustion through cache growth.
     /// </summary>
     public int MaxPathCacheSize { get; set; } = SecurityConstants.MaxPathCacheSize;

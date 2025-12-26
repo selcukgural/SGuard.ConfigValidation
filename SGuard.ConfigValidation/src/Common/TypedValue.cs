@@ -244,7 +244,7 @@ public sealed class TypedValue
 
         return false;
     }
-    
+
     /// <summary>
     /// Attempts to convert the provided <paramref name="value"/> to a <c>double</c>.
     /// Supports numeric types: <c>double</c>, <c>float</c>, <c>int</c>, <c>long</c>, <c>short</c>, <c>byte</c>, and <c>decimal</c>.
@@ -324,16 +324,47 @@ public sealed class TypedValue
 }
 
 /// <summary>
-/// Represents value types.
+/// Enumerates the possible types of values that can be represented by <see cref="TypedValue"/>.
 /// </summary>
 public enum ValueType
 {
+    /// <summary>
+    /// The value type is unknown or not recognized.
+    /// </summary>
     Unknown,
+
+    /// <summary>
+    /// The value is a string.
+    /// </summary>
     String,
+
+    /// <summary>
+    /// The value is a numeric type (e.g., int, double, decimal).
+    /// </summary>
     Number,
+
+    /// <summary>
+    /// The value is a boolean (true or false).
+    /// </summary>
     Boolean,
+
+    /// <summary>
+    /// The value is an array.
+    /// </summary>
     Array,
+
+    /// <summary>
+    /// The value is an object.
+    /// </summary>
     Object,
+
+    /// <summary>
+    /// The value is null.
+    /// </summary>
     Null,
+
+    /// <summary>
+    /// The value is a <see cref="System.Text.Json.JsonElement"/>.
+    /// </summary>
     JsonElement
 }

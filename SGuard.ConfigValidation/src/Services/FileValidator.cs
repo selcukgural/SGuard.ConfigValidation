@@ -3,6 +3,7 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Services;
 
@@ -16,8 +17,8 @@ public sealed class FileValidator : IFileValidator
 
     public FileValidator(IValidatorFactory validatorFactory, ILogger<FileValidator> logger)
     {
-        ArgumentNullException.ThrowIfNull(validatorFactory);
-        ArgumentNullException.ThrowIfNull(logger);
+        System.ArgumentNullException.ThrowIfNull(validatorFactory);
+        System.ArgumentNullException.ThrowIfNull(logger);
         _validatorFactory = validatorFactory;
         _logger = logger;
     }
@@ -31,31 +32,28 @@ public sealed class FileValidator : IFileValidator
     /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="applicableRules"/> or <paramref name="appSettings"/> is null.</exception>
     /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the file cannot be loaded or parsed.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the file cannot be loaded or parsed.</exception>
     public FileValidationResult ValidateFile(
         string filePath, 
         List<Rule> applicableRules,
-        Dictionary<string, object> appSettings)
+        Dictionary<string, object>? appSettings)
     {
-        _logger.LogDebug("Starting file validation for {FilePath} with {RuleCount} rules and {SettingCount} app settings", 
-            filePath, applicableRules?.Count ?? 0, appSettings?.Count ?? 0);
-
         if (string.IsNullOrWhiteSpace(filePath))
         {
             _logger.LogError("File validation failed: File path is null or empty");
-            throw This.ArgumentException(nameof(SR.ArgumentException_FilePathRequired), nameof(filePath));
+            throw ArgumentException(nameof(SR.ArgumentException_FilePathRequired), nameof(filePath));
         }
 
         if (applicableRules == null)
         {
             _logger.LogError("File validation failed: Applicable rules are null. File path: {FilePath}", filePath);
-            throw This.ArgumentNullException(nameof(SR.ArgumentNullException_ApplicableRules), nameof(applicableRules), filePath);
+            throw ArgumentNullException(nameof(SR.ArgumentNullException_ApplicableRules), nameof(applicableRules), filePath);
         }
 
         if (appSettings == null)
         {
             _logger.LogError("File validation failed: AppSettings are null. File path: {FilePath}", filePath);
-            throw This.ArgumentNullException(nameof(SR.ArgumentNullException_AppSettings), nameof(appSettings), filePath);
+            throw ArgumentNullException(nameof(SR.ArgumentNullException_AppSettings), nameof(appSettings), filePath);
         }
 
         // Pre-allocate list capacity based on estimated number of validations
@@ -64,8 +62,6 @@ public sealed class FileValidator : IFileValidator
         var estimatedCapacity = applicableRules.Sum(r => 
             r?.RuleDetail?.Conditions?.Sum(c => c?.Validators?.Count ?? 0) ?? 0);
         var results = new List<ValidationResult>(Math.Max(estimatedCapacity, applicableRules.Count));
-
-        _logger.LogDebug("Processing {RuleCount} rules for file {FilePath}", applicableRules.Count, filePath);
 
         foreach (var rule in applicableRules)
         {
@@ -80,8 +76,6 @@ public sealed class FileValidator : IFileValidator
                 continue;
             }
 
-            _logger.LogDebug("Processing rule {RuleId} for file {FilePath}", rule.Id, filePath);
-
             if (rule.RuleDetail == null)
             {
                 _logger.LogWarning("Rule {RuleId} has no rule detail. File: {FilePath}", rule.Id, filePath);
@@ -95,11 +89,8 @@ public sealed class FileValidator : IFileValidator
 
             if (rule.RuleDetail.Conditions == null)
             {
-                _logger.LogDebug("Rule {RuleId} has no conditions, skipping. File: {FilePath}", rule.Id, filePath);
                 continue;
             }
-
-            _logger.LogDebug("Rule {RuleId} has {ConditionCount} conditions", rule.Id, rule.RuleDetail.Conditions.Count);
 
             foreach (var condition in rule.RuleDetail.Conditions)
             {
@@ -115,7 +106,6 @@ public sealed class FileValidator : IFileValidator
                     continue;
                 }
 
-                _logger.LogDebug("Validating condition for key {ConditionKey} in rule {RuleId}", condition.Key, rule.Id);
                 var conditionResults = ValidateCondition(condition, appSettings);
                 
                 var errorCount = conditionResults.Count(r => !r.IsValid);
@@ -123,11 +113,6 @@ public sealed class FileValidator : IFileValidator
                 {
                     _logger.LogWarning("Condition validation for key {ConditionKey} in rule {RuleId} found {ErrorCount} errors", 
                         condition.Key, rule.Id, errorCount);
-                }
-                else
-                {
-                    _logger.LogDebug("Condition validation for key {ConditionKey} in rule {RuleId} passed", 
-                        condition.Key, rule.Id);
                 }
 
                 results.AddRange(conditionResults);
@@ -179,18 +164,6 @@ public sealed class FileValidator : IFileValidator
 
         // Get the value from appsettings
         var hasValue = appSettings.TryGetValue(condition.Key, out var value);
-        
-        if (!hasValue)
-        {
-            _logger.LogDebug("Key {ConditionKey} not found in app settings", condition.Key);
-        }
-        else
-        {
-            _logger.LogDebug("Found value for key {ConditionKey}: {Value}", condition.Key, value);
-        }
-
-        _logger.LogDebug("Applying {ValidatorCount} validators to condition {ConditionKey}", 
-            condition.Validators.Count, condition.Key);
 
         foreach (var validatorCondition in condition.Validators)
         {
@@ -205,9 +178,6 @@ public sealed class FileValidator : IFileValidator
                     "system", condition.Key, value));
                 continue;
             }
-
-            _logger.LogDebug("Applying validator {ValidatorType} to key {ConditionKey}", 
-                validatorCondition.Validator, condition.Key);
 
             try
             {
@@ -233,11 +203,6 @@ public sealed class FileValidator : IFileValidator
                         validatorCondition.Validator, 
                         condition.Key, 
                         value);
-                }
-                else
-                {
-                    _logger.LogDebug("Validation passed for key {ConditionKey} using validator {ValidatorType}", 
-                        condition.Key, validatorCondition.Validator);
                 }
                 
                 results.Add(result);

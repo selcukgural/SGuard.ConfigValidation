@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Common;
 
@@ -93,7 +94,7 @@ public static class SafeFileSystem
             // Verify we can write to the directory
             if (!CanWriteToDirectory(fullPath))
             {
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_CannotWriteDirectory), fullPath);
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_CannotWriteDirectory), fullPath);
             }
             return fullPath;
         }
@@ -108,7 +109,7 @@ public static class SafeFileSystem
             }
             catch
             {
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_UnableCreateTempDirectory), ex, ex.Message);
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_UnableCreateTempDirectory), ex, ex.Message);
             }
         }
     }
@@ -126,10 +127,10 @@ public static class SafeFileSystem
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            throw This.ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
+            throw ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
         }
 
-        // Validate path traversal if base path is provided
+        // Validate path traversal if a base path is provided
         if (!string.IsNullOrWhiteSpace(basePath))
         {
             var resolvedPath = Path.GetFullPath(filePath);
@@ -140,7 +141,7 @@ public static class SafeFileSystem
             }
         }
 
-        // Validate symlink if base path is provided
+        // Validate symlink if a base path is provided
         if (!string.IsNullOrWhiteSpace(basePath) && PathSecurity.IsSymlink(filePath))
         {
             PathSecurity.ValidateSymlink(filePath, basePath);
@@ -156,7 +157,7 @@ public static class SafeFileSystem
             catch (Exception ex)
             {
                 var fullPath = Path.GetFullPath(directory);
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_CannotCreateDirectory), ex, 
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_CannotCreateDirectory), ex, 
                     directory, fullPath, ex.GetType().Name, ex.Message);
             }
         }
@@ -165,7 +166,7 @@ public static class SafeFileSystem
         if (!CanWriteFile(filePath))
         {
             var fullPath = Path.GetFullPath(filePath);
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_InsufficientWritePermissions), 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_InsufficientWritePermissions), 
                 filePath, fullPath);
         }
 
@@ -180,13 +181,13 @@ public static class SafeFileSystem
         catch (DirectoryNotFoundException ex)
         {
             var fullPath = Path.GetFullPath(filePath);
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_DirectoryNotFound), ex, 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_DirectoryNotFound), ex, 
                 filePath, fullPath, ex.Message);
         }
         catch (Exception ex)
         {
             var fullPath = Path.GetFullPath(filePath);
-            throw This.InvalidOperationException(nameof(SR.InvalidOperationException_FileWriteUnexpectedError), ex, 
+            throw InvalidOperationException(nameof(SR.InvalidOperationException_FileWriteUnexpectedError), ex, 
                 filePath, fullPath, ex.GetType().Name, ex.Message);
         }
     }
@@ -263,14 +264,14 @@ public static class SafeFileSystem
 
         try
         {
-            // If file exists, check write access
+            // If a file exists, check write access
             if (File.Exists(filePath))
             {
                 using var fileStream = File.Open(filePath, FileMode.Open, FileAccess.Write, FileShare.None);
                 return fileStream.CanWrite;
             }
 
-            // If file doesn't exist, check if directory is writable
+            // If a file doesn't exist, check if the directory is writable
             var directory = Path.GetDirectoryName(filePath);
             if (string.IsNullOrWhiteSpace(directory))
             {
@@ -328,10 +329,10 @@ public static class SafeFileSystem
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            throw This.ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
+            throw ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
         }
 
-        // Validate path traversal if base path is provided
+        // Validate path traversal if a base path is provided
         if (!string.IsNullOrWhiteSpace(basePath))
         {
             var resolvedPath = Path.GetFullPath(filePath);
@@ -342,7 +343,7 @@ public static class SafeFileSystem
             }
         }
 
-        // Validate symlink if base path is provided
+        // Validate symlink if a base path is provided
         if (!string.IsNullOrWhiteSpace(basePath) && PathSecurity.IsSymlink(filePath))
         {
             PathSecurity.ValidateSymlink(filePath, basePath);
@@ -351,13 +352,13 @@ public static class SafeFileSystem
         var fullPath = Path.GetFullPath(filePath);
         if (!File.Exists(fullPath))
         {
-            throw This.FileNotFoundException(filePath, nameof(SR.FileNotFoundException_FileNotFound), filePath, fullPath);
+            throw FileNotFoundException(filePath, nameof(SR.FileNotFoundException_FileNotFound), filePath, fullPath);
         }
 
         // Check file read permissions
         if (!CanReadFile(fullPath))
         {
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_InsufficientReadPermissions), 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_InsufficientReadPermissions), 
                 filePath, fullPath);
         }
 
@@ -367,18 +368,18 @@ public static class SafeFileSystem
         }
         catch (DirectoryNotFoundException ex)
         {
-            throw This.FileNotFoundException(filePath, nameof(SR.FileNotFoundException_DirectoryNotFound), filePath, fullPath, ex.Message);
+            throw FileNotFoundException(filePath, nameof(SR.FileNotFoundException_DirectoryNotFound), filePath, fullPath, ex.Message);
         }
         catch (IOException ex)
         {
-            throw This.InvalidOperationException(nameof(SR.InvalidOperationException_FileWriteUnexpectedError), ex, 
+            throw InvalidOperationException(nameof(SR.InvalidOperationException_FileWriteUnexpectedError), ex, 
                 filePath, fullPath, ex.GetType().Name, ex.Message);
         }
     }
 
     /// <summary>
     /// Safely checks if a file exists.
-    /// Includes path traversal validation if base path is provided.
+    /// Includes path traversal validation if a base path is provided.
     /// </summary>
     /// <param name="filePath">The path to the file.</param>
     /// <param name="basePath">Optional base path for path traversal validation. If provided, the file path must be within the base directory.</param>
@@ -393,14 +394,14 @@ public static class SafeFileSystem
 
         try
         {
-            // Validate path traversal if base path is provided
+            // Validate path traversal if a base path is provided
             if (!string.IsNullOrWhiteSpace(basePath))
             {
                 var resolvedPath = Path.GetFullPath(filePath);
                 var baseDirectory = Path.GetDirectoryName(Path.GetFullPath(basePath));
                 if (!string.IsNullOrWhiteSpace(baseDirectory))
                 {
-                    // Only validate if path exists (to avoid false positives for non-existent paths)
+                    // Only validate if a path exists (to avoid false positives for non-existent paths)
                     if (File.Exists(filePath) || Directory.Exists(filePath))
                     {
                         PathSecurity.ValidateResolvedPath(resolvedPath, basePath);
@@ -408,7 +409,7 @@ public static class SafeFileSystem
                 }
             }
 
-            // Validate symlink if base path is provided
+            // Validate symlink if a base path is provided
             if (!string.IsNullOrWhiteSpace(basePath) && PathSecurity.IsSymlink(filePath))
             {
                 PathSecurity.ValidateSymlink(filePath, basePath);
@@ -449,7 +450,7 @@ public static class SafeFileSystem
         {
             Directory.Delete(directoryPath, recursive);
         }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        catch (Exception ex) when (ex is System.UnauthorizedAccessException or IOException)
         {
             // Log but don't throw - cleanup failures shouldn't break tests
             // In production, you might want to log this

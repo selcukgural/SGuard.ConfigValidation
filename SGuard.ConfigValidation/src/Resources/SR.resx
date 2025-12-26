@@ -107,6 +107,9 @@
   <data name="ConfigurationException_NoEnvironments" xml:space="preserve">
     <value>Configuration validation failed: No environments defined. File: '{0}' (absolute path: '{1}'). Found {2} rule(s) but 0 environments. At least one environment definition is required. Please add an 'environments' array with at least one environment object containing 'id', 'name', and 'path' properties.</value>
   </data>
+  <data name="ConfigurationException_NoRules" xml:space="preserve">
+    <value>Configuration validation failed: No rules defined. File: '{0}' (absolute path: '{1}'). Found {2} environment(s) but 0 rules. At least one rule definition is required. Please add a 'rules' array with at least one rule object.</value>
+  </data>
   <data name="ConfigurationException_EnvironmentCountExceedsLimit" xml:space="preserve">
     <value>Configuration validation failed: Environment count exceeds security limit. File: '{0}' (absolute path: '{1}'). Actual count: {2} environments. Maximum allowed: {3} environments. Exceeded by: {4} environments. This may indicate a DoS attack attempt. Please reduce the number of environments or contact your administrator to adjust the security limits.</value>
   </data>
@@ -318,6 +321,120 @@
   </data>
   <data name="ConsoleOutput_ValidatedRules" xml:space="preserve">
     <value>   Validated {0} rule(s)</value>
+  </data>
+  
+  <!-- RuleEngine Messages -->
+  <data name="RuleEngine_ValidationFailed_EnvironmentIdRequired" xml:space="preserve">
+    <value>Validation failed: Environment ID is required but was null or empty. Context: {0}. Please provide a valid environment ID to validate.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_EnvironmentInvalidPath" xml:space="preserve">
+    <value>Validation failed: Environment '{0}' has an invalid or empty path. Context: {1}. Environment name: '{2}'. Please ensure the environment definition includes a valid 'path' property pointing to the app settings file.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_FileNotFound" xml:space="preserve">
+    <value>Validation failed: Required file not found. Environment ID: '{0}'. File path: '{1}'. Context: {2}. Error: {3}. Please ensure the configuration file and referenced app settings files exist and are accessible.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_ConfigurationError" xml:space="preserve">
+    <value>Validation failed: Configuration error detected. Environment ID: '{0}'. Context: {1}. Error: {2}. Please review the configuration file structure and fix any validation errors.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_ValidationError" xml:space="preserve">
+    <value>Validation failed: Validation error occurred. Environment ID: '{0}'. Context: {1}. Error: {2}. Please review the validation rules and fix any rule violations.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_UnexpectedError" xml:space="preserve">
+    <value>Validation failed: Unexpected error occurred. Environment ID: '{0}'. Context: {1}. Exception type: {2}. Error: {3}. This is an unexpected error. Please check the logs for more details and contact support if the issue persists.</value>
+  </data>
+  <data name="RuleEngine_EnvironmentNotFound" xml:space="preserve">
+    <value>Validation failed: Environment '{0}' not found in configuration.{1} Total environments in configuration: {2}. Available environment IDs: {3}. Please verify the environment ID is correct and matches one of the available environments in the configuration file.</value>
+  </data>
+  <data name="RuleEngine_NoEnvironmentsFound" xml:space="preserve">
+    <value>No environments found in configuration.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_FileNotFound_AllEnvironments" xml:space="preserve">
+    <value>Validation failed: Required file not found. Context: {0}. File path: '{1}'. Error: {2}. Please ensure the configuration file and referenced app settings files exist and are accessible.</value>
+  </data>
+  <data name="RuleEngine_ValidationFailed_ConfigurationError_AllEnvironments" xml:space="preserve">
+    <value>Validation failed: Configuration error detected. Context: {0}. Error: {1}. Please review the configuration file structure and fix any validation errors.</value>
+  </data>
+  
+  <!-- ValidationMessageFormatter Messages -->
+  <data name="ValidationMessageFormatter_UnsupportedValidator" xml:space="preserve">
+    <value>Validation error: Unsupported validator type '{0}'. Configuration key: '{1}'. Value: {2}. Error: {3}. Please use a supported validator type. Check the configuration for valid validator types.</value>
+  </data>
+  <data name="ValidationMessageFormatter_InvalidArgument" xml:space="preserve">
+    <value>Validation error: Invalid validation argument. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Error: {3}. Please check the validator configuration and ensure all required properties are provided.</value>
+  </data>
+  <data name="ValidationMessageFormatter_UnexpectedError" xml:space="preserve">
+    <value>Validation error: Unexpected error occurred during validation. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Exception type: {3}. Error: {4}. This is an unexpected error. Please check the logs for more details.</value>
+  </data>
+  <data name="ValidationMessageFormatter_EnvironmentError" xml:space="preserve">
+    <value>Environment '{0}' {1}: {2}</value>
+  </data>
+  <data name="ValidationMessageFormatter_ValueComparison" xml:space="preserve">
+    <value>Actual value: {0}. Expected value: {1}.</value>
+  </data>
+  <data name="ValidationMessageFormatter_FileNotFound" xml:space="preserve">
+    <value>File not found for environment '{0}': {1}</value>
+  </data>
+  <data name="ValidationMessageFormatter_ConfigurationError" xml:space="preserve">
+    <value>Configuration error for environment '{0}': {1}</value>
+  </data>
+  <data name="ValidationMessageFormatter_FailedToLoadEnvironment" xml:space="preserve">
+    <value>Failed to load or validate environment '{0}': {1}</value>
+  </data>
+  <data name="ValidationMessageFormatter_Context_EnvironmentId" xml:space="preserve">
+    <value>Environment ID: '{0}'. </value>
+  </data>
+  <data name="ValidationMessageFormatter_Context_ContextDesc" xml:space="preserve">
+    <value>Context: {0}. </value>
+  </data>
+  
+  <!-- JsonSchemaValidator Messages -->
+  <data name="JsonSchemaValidator_JsonContentRequired" xml:space="preserve">
+    <value>Schema validation failed: JSON content is required but was null or empty. Please provide valid JSON content to validate against the schema.</value>
+  </data>
+  <data name="JsonSchemaValidator_SchemaContentRequired" xml:space="preserve">
+    <value>Schema validation failed: Schema content is required but was null or empty. Please provide valid JSON schema content to validate against.</value>
+  </data>
+  <data name="JsonSchemaValidator_SchemaFilePathRequired" xml:space="preserve">
+    <value>Schema validation failed: Schema file path is required but was null or empty. Please provide a valid path to the JSON schema file.</value>
+  </data>
+  <data name="JsonSchemaValidator_InvalidJsonFormat" xml:space="preserve">
+    <value>Schema validation failed: Invalid JSON format detected{0}. JSON parsing error: {1}. Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again.</value>
+  </data>
+  <data name="JsonSchemaValidator_UnexpectedErrorSchemaParsing" xml:space="preserve">
+    <value>Schema validation failed: Unexpected error occurred during schema parsing. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details.</value>
+  </data>
+  <data name="JsonSchemaValidator_SchemaFileNotFound" xml:space="preserve">
+    <value>Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Please ensure the schema file exists and the path is correct. Check for typos, verify the file location, and ensure you have read permissions.</value>
+  </data>
+  <data name="JsonSchemaValidator_SchemaFileNotFound_WithError" xml:space="preserve">
+    <value>Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Please ensure the schema file exists and the path is correct.</value>
+  </data>
+  <data name="JsonSchemaValidator_IOError" xml:space="preserve">
+    <value>Schema validation failed: I/O error occurred while reading the schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Possible causes: file is locked by another process, disk is full, network path is unavailable, or insufficient permissions. Please check file access permissions and ensure the file is not in use by another application.</value>
+  </data>
+  <data name="JsonSchemaValidator_AccessDenied" xml:space="preserve">
+    <value>Schema validation failed: Access denied reading schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. The current user does not have read permissions for this file. Please check file permissions and ensure the file is readable by the current user or process.</value>
+  </data>
+  <data name="JsonSchemaValidator_UnexpectedErrorReadingFile" xml:space="preserve">
+    <value>Schema validation failed: Unexpected error occurred while reading schema file. Schema path: '{0}' (resolved to: '{1}'). Exception type: {2}. Error: {3}. This is an unexpected error. Please check the logs for more details.</value>
+  </data>
+  <data name="JsonSchemaValidator_UnexpectedErrorValidation" xml:space="preserve">
+    <value>Schema validation failed: Unexpected error occurred during schema validation. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details.</value>
+  </data>
+  <data name="JsonSchemaValidator_MissingRequiredProperty" xml:space="preserve">
+    <value>Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Missing properties: {3}. Please add the required property to the JSON document.</value>
+  </data>
+  <data name="JsonSchemaValidator_MissingRequiredProperty_NoProperties" xml:space="preserve">
+    <value>Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Please add the required property to the JSON document.</value>
+  </data>
+  <data name="JsonSchemaValidator_InvalidType" xml:space="preserve">
+    <value>Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Actual type: {3}. Please ensure the value matches the expected type specified in the schema.</value>
+  </data>
+  <data name="JsonSchemaValidator_InvalidType_NoActualType" xml:space="preserve">
+    <value>Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Please ensure the value matches the expected type specified in the schema.</value>
+  </data>
+  <data name="JsonSchemaValidator_ValidationError" xml:space="preserve">
+    <value>Schema validation failed: Validation error at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Error details: {3}. Please review the schema requirements and fix the JSON document accordingly.</value>
   </data>
 </root>
 

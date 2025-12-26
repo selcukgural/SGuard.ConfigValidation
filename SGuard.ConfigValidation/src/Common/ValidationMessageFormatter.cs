@@ -1,3 +1,5 @@
+using SGuard.ConfigValidation.Resources;
+
 namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
@@ -17,11 +19,9 @@ internal static class ValidationMessageFormatter
     internal static string FormatUnsupportedValidatorError(string validatorType, string key, object? value, Exception exception)
     {
         var valueStr = value == null ? "null" : $"'{value}'";
-        return $"Validation error: Unsupported validator type '{validatorType}'. " +
-               $"Configuration key: '{key}'. " +
-               $"Value: {valueStr}. " +
-               $"Error: {exception.Message}. " +
-               "Please use a supported validator type. Check the configuration for valid validator types.";
+        var message = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_UnsupportedValidator));
+        return string.Format(message ?? "Validation error: Unsupported validator type '{0}'. Configuration key: '{1}'. Value: {2}. Error: {3}. Please use a supported validator type. Check the configuration for valid validator types.",
+            validatorType, key, valueStr, exception.Message);
     }
 
     /// <summary>
@@ -35,12 +35,9 @@ internal static class ValidationMessageFormatter
     internal static string FormatInvalidArgumentError(string key, string validatorType, object? value, Exception exception)
     {
         var valueStr = value == null ? "null" : $"'{value}'";
-        return $"Validation error: Invalid validation argument. " +
-               $"Configuration key: '{key}'. " +
-               $"Validator type: '{validatorType}'. " +
-               $"Value: {valueStr}. " +
-               $"Error: {exception.Message}. " +
-               "Please check the validator configuration and ensure all required properties are provided.";
+        var message = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_InvalidArgument));
+        return string.Format(message ?? "Validation error: Invalid validation argument. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Error: {3}. Please check the validator configuration and ensure all required properties are provided.",
+            key, validatorType, valueStr, exception.Message);
     }
 
     /// <summary>
@@ -54,13 +51,9 @@ internal static class ValidationMessageFormatter
     internal static string FormatUnexpectedValidationError(string key, string validatorType, object? value, Exception exception)
     {
         var valueStr = value == null ? "null" : $"'{value}'";
-        return $"Validation error: Unexpected error occurred during validation. " +
-               $"Configuration key: '{key}'. " +
-               $"Validator type: '{validatorType}'. " +
-               $"Value: {valueStr}. " +
-               $"Exception type: {exception.GetType().Name}. " +
-               $"Error: {exception.Message}. " +
-               "This is an unexpected error. Please check the logs for more details.";
+        var message = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_UnexpectedError));
+        return string.Format(message ?? "Validation error: Unexpected error occurred during validation. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Exception type: {3}. Error: {4}. This is an unexpected error. Please check the logs for more details.",
+            key, validatorType, valueStr, exception.GetType().Name, exception.Message);
     }
 
     /// <summary>
@@ -72,7 +65,8 @@ internal static class ValidationMessageFormatter
     /// <returns>A formatted error message.</returns>
     internal static string FormatEnvironmentError(string environmentId, string errorType, string message)
     {
-        return $"Environment '{environmentId}' {errorType}: {message}";
+        var template = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_EnvironmentError));
+        return string.Format(template ?? "Environment '{0}' {1}: {2}", environmentId, errorType, message);
     }
 
     /// <summary>
@@ -87,9 +81,9 @@ internal static class ValidationMessageFormatter
     {
         var actualStr = actualValue == null ? "null" : $"'{actualValue}'";
         var expectedStr = expectedValue == null ? "null" : $"'{expectedValue}'";
-        return $"{baseMessage} " +
-               $"Actual value: {actualStr}. " +
-               $"Expected value: {expectedStr}.";
+        var comparisonTemplate = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_ValueComparison));
+        var comparisonPart = string.Format(comparisonTemplate ?? "Actual value: {0}. Expected value: {1}.", actualStr, expectedStr);
+        return $"{baseMessage} {comparisonPart}";
     }
 
     /// <summary>
@@ -101,7 +95,8 @@ internal static class ValidationMessageFormatter
     /// <returns>A formatted error message.</returns>
     internal static string FormatFileNotFoundError(string environmentId, string? filePath, Exception exception)
     {
-        return $"File not found for environment '{environmentId}': {exception.Message}";
+        var message = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_FileNotFound));
+        return string.Format(message ?? "File not found for environment '{0}': {1}", environmentId, exception.Message);
     }
 
     /// <summary>
@@ -113,7 +108,8 @@ internal static class ValidationMessageFormatter
     /// <returns>A formatted error message.</returns>
     internal static string FormatConfigurationError(string environmentId, string message, Exception exception)
     {
-        return $"Configuration error for environment '{environmentId}': {exception.Message}";
+        var template = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_ConfigurationError));
+        return string.Format(template ?? "Configuration error for environment '{0}': {1}", environmentId, exception.Message);
     }
 
     /// <summary>
@@ -125,7 +121,8 @@ internal static class ValidationMessageFormatter
     /// <returns>A formatted error message.</returns>
     internal static string FormatFailedToLoadEnvironmentError(string environmentId, string message, Exception exception)
     {
-        return $"Failed to load or validate environment '{environmentId}': {exception.Message}";
+        var template = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_FailedToLoadEnvironment));
+        return string.Format(template ?? "Failed to load or validate environment '{0}': {1}", environmentId, exception.Message);
     }
 
     /// <summary>
@@ -144,11 +141,14 @@ internal static class ValidationMessageFormatter
         string? additionalInfo = null,
         string? suggestion = null)
     {
+        var environmentIdTemplate = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_Context_EnvironmentId));
+        var contextDescTemplate = SR.ResourceManager.GetString(nameof(SR.ValidationMessageFormatter_Context_ContextDesc));
+        
         var contextInfo = !string.IsNullOrWhiteSpace(environmentId)
-            ? $"Environment ID: '{environmentId}'. "
+            ? string.Format(environmentIdTemplate ?? "Environment ID: '{0}'. ", environmentId)
             : string.Empty;
         var contextDesc = !string.IsNullOrWhiteSpace(contextDescription)
-            ? $"Context: {contextDescription}. "
+            ? string.Format(contextDescTemplate ?? "Context: {0}. ", contextDescription)
             : string.Empty;
         var additional = !string.IsNullOrWhiteSpace(additionalInfo)
             ? $"{additionalInfo} "

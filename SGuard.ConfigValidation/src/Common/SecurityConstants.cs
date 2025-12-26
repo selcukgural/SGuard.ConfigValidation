@@ -2,7 +2,7 @@ namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
 /// Security-related constants for resource limits and DoS protection.
-/// These limits prevent denial of service attacks by restricting resource consumption.
+/// These limits prevent denial-of-service attacks by restricting resource consumption.
 /// </summary>
 public static class SecurityConstants
 {
@@ -56,7 +56,7 @@ public static class SecurityConstants
     /// </summary>
     public const int MaxJsonDepth = 64;
 
-    // Hard limits (absolute maximums, cannot be exceeded even via configuration)
+    // Hard limits (absolute maximums cannot be exceeded even via configuration)
     
     /// <summary>
     /// Hard limit for maximum allowed file size in bytes (500 MB).
@@ -66,39 +66,39 @@ public static class SecurityConstants
     public const long MaxFileSizeBytesHardLimit = 500 * 1024 * 1024; // 500 MB
 
     /// <summary>
-    /// Hard limit for maximum number of environments allowed in a configuration file (5000).
+    /// Hard limit for the maximum number of environments allowed in a configuration file (5000).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
     /// </summary>
     public const int MaxEnvironmentsCountHardLimit = 5000;
 
     /// <summary>
-    /// Hard limit for maximum number of rules allowed in a configuration file (50000).
+    /// Hard limit for the maximum number of rules allowed in a configuration file (50,000).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
     /// </summary>
     public const int MaxRulesCountHardLimit = 50000;
 
     /// <summary>
-    /// Hard limit for maximum number of conditions allowed per rule (5000).
+    /// Hard limit for the maximum number of conditions allowed per rule (5000).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
     /// </summary>
     public const int MaxConditionsPerRuleHardLimit = 5000;
 
     /// <summary>
-    /// Hard limit for maximum number of validators allowed per condition (500).
+    /// Hard limit for the maximum number of validators allowed per condition (500).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
     /// </summary>
     public const int MaxValidatorsPerConditionHardLimit = 500;
 
     /// <summary>
-    /// Hard limit for maximum number of entries allowed in the path resolver cache (100000).
+    /// Hard limit for the maximum number of entries allowed in the path resolver cache (100,000).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
     /// </summary>
     public const int MaxPathCacheSizeHardLimit = 100000;
 
     /// <summary>
-    /// Hard limit for maximum length for a single path string (16384 characters).
+    /// Hard limit for the maximum length for a single path string (16,384 characters).
     /// This is the absolute maximum that cannot be exceeded even if configured higher.
-    /// Based on common filesystem limits (Windows MAX_PATH is 260, but extended paths can be up to 32767).
+    /// Based on common filesystem limits (Windows MAX_PATH is 260, but extended paths can be up to 32,767).
     /// </summary>
     public const int MaxPathLengthHardLimit = 16384;
 

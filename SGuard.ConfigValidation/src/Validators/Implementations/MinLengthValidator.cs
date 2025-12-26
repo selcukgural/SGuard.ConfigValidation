@@ -20,9 +20,8 @@ public sealed class MinLengthValidator : BaseValidator<object>
 
         // Get condition value in a type-safe manner
         var conditionTypedValue = condition.GetTypedValue();
-        int minLength;
-        
-        if (!conditionTypedValue.TryGetInt32(out minLength))
+
+        if (!conditionTypedValue.TryGetInt32(out var minLength))
         {
             // Use JsonElementHelper for backward compatibility (may throw exception)
             minLength = JsonElement.GetInt32(condition.Value, ValidatorType);

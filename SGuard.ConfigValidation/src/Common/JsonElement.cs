@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Common;
 
@@ -46,7 +47,7 @@ public static class JsonElement
     /// <exception cref="InvalidOperationException">Thrown when conversion fails.</exception>
     public static int GetInt32(object? value, string validatorType)
     {
-        return !TryGetInt32(value, out var result) ? throw This.InvalidOperationException(nameof(SR.InvalidOperationException_CannotConvertToInt), value ?? "null", validatorType) : result;
+        return !TryGetInt32(value, out var result) ? throw InvalidOperationException(nameof(SR.InvalidOperationException_CannotConvertToInt), value ?? "null", validatorType) : result;
     }
 }
 

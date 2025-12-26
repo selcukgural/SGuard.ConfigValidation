@@ -14,7 +14,7 @@ public interface IYamlLoader
     /// <returns>The loaded SGuard configuration.</returns>
     /// <exception cref="ArgumentException">Thrown when yamlPath is null or empty.</exception>
     /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
     SGuardConfig LoadConfig(string yamlPath);
 
     /// <summary>
@@ -24,7 +24,7 @@ public interface IYamlLoader
     /// <returns>A dictionary containing flattened app settings with colon-separated keys.</returns>
     /// <exception cref="ArgumentException">Thrown when yamlPath is null or empty.</exception>
     /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
     Dictionary<string, object> LoadAppSettings(string yamlPath);
 }
 

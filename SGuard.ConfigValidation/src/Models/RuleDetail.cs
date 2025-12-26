@@ -13,12 +13,12 @@ public sealed class RuleDetail
     /// Required field. Must not be null or empty.
     /// </summary>
     [JsonPropertyName("id")]
-    public required string Id { get; init; } = string.Empty;
+    public required string Id { get; init; }
 
     /// <summary>
     /// Gets or sets the list of validation conditions that must be checked.
     /// Required field. Must contain at least one condition.
     /// </summary>
     [JsonPropertyName("conditions")]
-    public required List<Condition> Conditions { get; init; } = [];
+    public required List<Condition> Conditions { get; init; }
 }

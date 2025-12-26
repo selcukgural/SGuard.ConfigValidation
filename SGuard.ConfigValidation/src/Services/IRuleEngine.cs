@@ -36,11 +36,5 @@ public interface IRuleEngine
     /// <param name="configJson">The JSON configuration string.</param>
     /// <returns>A rule engine result containing validation results for all environments.</returns>
     RuleEngineResult ValidateAllEnvironmentsFromJson(string configJson);
-
-    /// <summary>
-    /// Gets the list of supported validator types.
-    /// </summary>
-    /// <returns>An enumerable of supported validator type names.</returns>
-    IEnumerable<string> GetSupportedValidators();
 }
 

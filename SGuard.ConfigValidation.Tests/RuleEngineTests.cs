@@ -91,7 +91,26 @@ public sealed class RuleEngineTests : IDisposable
       ""path"": ""appsettings.dev.json""
     }
   ],
-  ""rules"": []
+  ""rules"": [
+    {
+      ""id"": ""test-rule"",
+      ""environments"": [""dev""],
+      ""rule"": {
+        ""id"": ""test-detail"",
+        ""conditions"": [
+          {
+            ""key"": ""Test:Key"",
+            ""condition"": [
+              {
+                ""validator"": ""required"",
+                ""message"": ""Test key is required""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }");
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
@@ -116,7 +135,26 @@ public sealed class RuleEngineTests : IDisposable
       ""path"": ""nonexistent.json""
     }
   ],
-  ""rules"": []
+  ""rules"": [
+    {
+      ""id"": ""test-rule"",
+      ""environments"": [""dev""],
+      ""rule"": {
+        ""id"": ""test-detail"",
+        ""conditions"": [
+          {
+            ""key"": ""Test:Key"",
+            ""condition"": [
+              {
+                ""validator"": ""required"",
+                ""message"": ""Test key is required""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }");
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");

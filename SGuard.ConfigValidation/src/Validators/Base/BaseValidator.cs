@@ -48,7 +48,7 @@ public abstract class BaseValidator<T> : IValidator<T>
         => ValidationResult.Failure(message, ValidatorType, key, value, ex);
     
     /// <summary>
-    /// Creates a failed validation result with detailed information including expected value.
+    /// Creates a failed validation result with detailed information including the expected value.
     /// </summary>
     /// <param name="message">The base error message describing why the validation failed.</param>
     /// <param name="key">The configuration key that was validated.</param>

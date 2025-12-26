@@ -33,7 +33,7 @@ public sealed class FileValidatorTests : IDisposable
 
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "test-rule",
                 Environments = new List<string> { "dev" },
@@ -42,12 +42,12 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "test-detail",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "ConnectionStrings:DefaultConnection",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
@@ -80,7 +80,7 @@ public sealed class FileValidatorTests : IDisposable
 
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "test-rule",
                 Environments = new List<string> { "dev" },
@@ -89,12 +89,12 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "test-detail",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "ConnectionStrings:DefaultConnection",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
@@ -130,7 +130,7 @@ public sealed class FileValidatorTests : IDisposable
 
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "rule1",
                 Environments = new List<string> { "dev" },
@@ -139,12 +139,12 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "detail1",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "ConnectionStrings:DefaultConnection",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
@@ -154,7 +154,7 @@ public sealed class FileValidatorTests : IDisposable
                     }
                 }
             },
-            new Rule
+            new()
             {
                 Id = "rule2",
                 Environments = new List<string> { "dev" },
@@ -163,12 +163,12 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "detail2",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "Logging:LogLevel",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "required",
                                     Message = "Log level is required"
@@ -200,7 +200,7 @@ public sealed class FileValidatorTests : IDisposable
 
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "test-rule",
                 Environments = new List<string> { "dev" },
@@ -209,17 +209,17 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "test-detail",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "ConnectionStrings:DefaultConnection",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
                                 },
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "min_len",
                                     Value = 10,
@@ -302,7 +302,7 @@ public sealed class FileValidatorTests : IDisposable
         var appSettings = new Dictionary<string, object>();
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "test-rule",
                 Environments = new List<string> { "dev" },
@@ -331,7 +331,7 @@ public sealed class FileValidatorTests : IDisposable
 
         var rules = new List<Rule>
         {
-            new Rule
+            new()
             {
                 Id = "test-rule",
                 Environments = new List<string> { "dev" },
@@ -340,12 +340,12 @@ public sealed class FileValidatorTests : IDisposable
                     Id = "test-detail",
                     Conditions = new List<Condition>
                     {
-                        new Condition
+                        new()
                         {
                             Key = "Test:Key",
                             Validators = new List<ValidatorCondition>
                             {
-                                new ValidatorCondition
+                                new()
                                 {
                                     Validator = "unsupported_validator",
                                     Message = "Test message"

@@ -36,8 +36,7 @@ public sealed class ValidatorPluginDiscovery
     {
         var validators = new Dictionary<string, IValidator<object>>(StringComparer.OrdinalIgnoreCase);
         
-        // Discover from current assembly
-        _logger.LogDebug("Discovering validators from current assembly");
+        // Discover from the current assembly
         DiscoverFromAssembly(Assembly.GetExecutingAssembly(), validators);
 
         // Discover from plugin directories if provided
@@ -47,7 +46,6 @@ public sealed class ValidatorPluginDiscovery
             {
                 if (Directory.Exists(directory))
                 {
-                    _logger.LogDebug("Discovering validators from plugin directory: {Directory}", directory);
                     DiscoverFromDirectory(directory, validators);
                 }
                 else
@@ -68,7 +66,7 @@ public sealed class ValidatorPluginDiscovery
     {
         try
         {
-            // Get types from cache or load them
+            // Get types from the cache or load them
             var allTypes = _assemblyTypesCache.GetOrAdd(assembly, asm =>
             {
                 try
@@ -85,8 +83,7 @@ public sealed class ValidatorPluginDiscovery
             // Filter plugin types (cached reflection result)
             var pluginTypes = allTypes
                 .Where(t => typeof(IValidatorPlugin).IsAssignableFrom(t) 
-                         && !t.IsInterface 
-                         && !t.IsAbstract);
+                            && t is { IsInterface: false, IsAbstract: false });
 
             foreach (var pluginType in pluginTypes)
             {
@@ -109,8 +106,6 @@ public sealed class ValidatorPluginDiscovery
                         }
 
                         validators[validatorType] = plugin.Validator;
-                        _logger.LogDebug("Registered validator plugin: {ValidatorType} from {PluginType}", 
-                            validatorType, pluginType.Name);
                     }
                 }
                 catch (Exception ex)
@@ -138,7 +133,6 @@ public sealed class ValidatorPluginDiscovery
             {
                 try
                 {
-                    _logger.LogDebug("Loading assembly: {AssemblyFile}", assemblyFile);
                     var assembly = Assembly.LoadFrom(assemblyFile);
                     DiscoverFromAssembly(assembly, validators);
                 }

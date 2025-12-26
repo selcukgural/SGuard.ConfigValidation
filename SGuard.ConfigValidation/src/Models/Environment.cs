@@ -20,7 +20,7 @@ public sealed class Environment
     /// Required field. Must not be null or empty.
     /// </summary>
     [JsonPropertyName("name")]
-    public required string Name { get; init; } = string.Empty;
+    public required string Name { get; init; }
 
     /// <summary>
     /// Gets the file path to the appsettings file for this environment.

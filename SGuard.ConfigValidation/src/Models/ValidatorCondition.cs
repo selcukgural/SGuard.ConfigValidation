@@ -14,7 +14,7 @@ public sealed class ValidatorCondition
     /// Required field. Must not be null or empty. Must be one of the supported validator types.
     /// </summary>
     [JsonPropertyName("validator")]
-    public required string Validator { get; set; } = string.Empty;
+    public required string Validator { get; init; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the expected value for the validator (if required).
@@ -23,14 +23,14 @@ public sealed class ValidatorCondition
     /// Optional validators: required.
     /// </summary>
     [JsonPropertyName("value")]
-    public object? Value { get; set; }
+    public object? Value { get; init; }
 
     /// <summary>
     /// Gets or sets the error message to display when validation fails.
     /// Required field. Must not be null or empty.
     /// </summary>
     [JsonPropertyName("message")]
-    public required string Message { get; set; } = string.Empty;
+    public required string Message { get; init; } = string.Empty;
 
     /// <summary>
     /// Returns the value as a type-safe wrapper for type-safe validation operations.

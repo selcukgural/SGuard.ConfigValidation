@@ -5,10 +5,24 @@ namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
 /// Helper class for creating exceptions with messages from resource files.
-/// Provides a clean API: throw This.ArgumentException(...), throw This.ConfigurationException(...), etc.
+/// Provides a clean API: throw ArgumentNullException(...), throw ArgumentException(...), etc.
+/// Use with: using static SGuard.ConfigValidation.Common.Throw;
 /// </summary>
-public static class This
+public static class Throw
 {
+    /// <summary>
+    /// Creates an <see cref="System.ArgumentNullException"/> with a message from resources.
+    /// </summary>
+    /// <param name="resourceKey">The resource key for the error message.</param>
+    /// <param name="paramName">The name of the parameter that is null.</param>
+    /// <param name="args">Optional arguments for formatting the message.</param>
+    /// <returns>An <see cref="System.ArgumentNullException"/> instance.</returns>
+    public static ArgumentNullException ArgumentNullException(string resourceKey, string paramName, params object[] args)
+    {
+        var message = GetResourceString(resourceKey, args);
+        return new ArgumentNullException(paramName, message);
+    }
+
     /// <summary>
     /// Creates an <see cref="System.ArgumentException"/> with a message from resources.
     /// </summary>
@@ -61,31 +75,6 @@ public static class This
     }
 
     /// <summary>
-    /// Creates an <see cref="System.UnauthorizedAccessException"/> with a message from resources.
-    /// </summary>
-    /// <param name="resourceKey">The resource key for the error message.</param>
-    /// <param name="args">Optional arguments for formatting the message.</param>
-    /// <returns>An <see cref="System.UnauthorizedAccessException"/> instance.</returns>
-    public static UnauthorizedAccessException UnauthorizedAccessException(string resourceKey, params object[] args)
-    {
-        var message = GetResourceString(resourceKey, args);
-        return new UnauthorizedAccessException(message);
-    }
-
-    /// <summary>
-    /// Creates an <see cref="System.UnauthorizedAccessException"/> with a message from resources and an inner exception.
-    /// </summary>
-    /// <param name="resourceKey">The resource key for the error message.</param>
-    /// <param name="innerException">The exception that is the cause of the current exception.</param>
-    /// <param name="args">Optional arguments for formatting the message.</param>
-    /// <returns>An <see cref="System.UnauthorizedAccessException"/> instance.</returns>
-    public static UnauthorizedAccessException UnauthorizedAccessException(string resourceKey, Exception innerException, params object[] args)
-    {
-        var message = GetResourceString(resourceKey, args);
-        return new UnauthorizedAccessException(message, innerException);
-    }
-
-    /// <summary>
     /// Creates an <see cref="System.InvalidOperationException"/> with a message from resources.
     /// </summary>
     /// <param name="resourceKey">The resource key for the error message.</param>
@@ -111,6 +100,31 @@ public static class This
     }
 
     /// <summary>
+    /// Creates an <see cref="System.UnauthorizedAccessException"/> with a message from resources.
+    /// </summary>
+    /// <param name="resourceKey">The resource key for the error message.</param>
+    /// <param name="args">Optional arguments for formatting the message.</param>
+    /// <returns>An <see cref="System.UnauthorizedAccessException"/> instance.</returns>
+    public static UnauthorizedAccessException UnauthorizedAccessException(string resourceKey, params object[] args)
+    {
+        var message = GetResourceString(resourceKey, args);
+        return new UnauthorizedAccessException(message);
+    }
+
+    /// <summary>
+    /// Creates an <see cref="System.UnauthorizedAccessException"/> with a message from resources and an inner exception.
+    /// </summary>
+    /// <param name="resourceKey">The resource key for the error message.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
+    /// <param name="args">Optional arguments for formatting the message.</param>
+    /// <returns>An <see cref="System.UnauthorizedAccessException"/> instance.</returns>
+    public static UnauthorizedAccessException UnauthorizedAccessException(string resourceKey, Exception innerException, params object[] args)
+    {
+        var message = GetResourceString(resourceKey, args);
+        return new UnauthorizedAccessException(message, innerException);
+    }
+
+    /// <summary>
     /// Creates a <see cref="System.NotSupportedException"/> with a message from resources.
     /// </summary>
     /// <param name="resourceKey">The resource key for the error message.</param>
@@ -121,20 +135,7 @@ public static class This
         var message = GetResourceString(resourceKey, args);
         return new NotSupportedException(message);
     }
-
-    /// <summary>
-    /// Creates an <see cref="System.ArgumentNullException"/> with a message from resources.
-    /// </summary>
-    /// <param name="resourceKey">The resource key for the error message.</param>
-    /// <param name="paramName">The name of the parameter that is null.</param>
-    /// <param name="args">Optional arguments for formatting the message.</param>
-    /// <returns>An <see cref="System.ArgumentNullException"/> instance.</returns>
-    public static ArgumentNullException ArgumentNullException(string resourceKey, string paramName, params object[] args)
-    {
-        var message = GetResourceString(resourceKey, args);
-        return new ArgumentNullException(paramName, message);
-    }
-
+    
     /// <summary>
     /// Gets a resource string and formats it with the provided arguments.
     /// </summary>

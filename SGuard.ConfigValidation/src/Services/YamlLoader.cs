@@ -5,6 +5,7 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using JsonElement = System.Text.Json.JsonElement;
@@ -28,8 +29,8 @@ public sealed class YamlLoader : IYamlLoader
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> or <paramref name="securityOptions"/> is null.</exception>
     public YamlLoader(ILogger<YamlLoader> logger, IOptions<SecurityOptions> securityOptions)
     {
-        ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(securityOptions);
+        System.ArgumentNullException.ThrowIfNull(logger);
+        System.ArgumentNullException.ThrowIfNull(securityOptions);
 
         _logger = logger;
         _securityOptions = securityOptions.Value;
@@ -52,12 +53,10 @@ public sealed class YamlLoader : IYamlLoader
     /// <exception cref="IOException">Thrown when an I/O error occurs while reading the file.</exception>
     public SGuardConfig LoadConfig(string yamlPath)
     {
-        _logger.LogDebug("Loading YAML configuration from {YamlPath}", yamlPath);
-
         if (string.IsNullOrWhiteSpace(yamlPath))
         {
             _logger.LogError("YAML configuration file path is null or empty");
-            throw This.ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(yamlPath));
+            throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(yamlPath));
         }
 
         if (!SafeFileSystem.FileExists(yamlPath))
@@ -65,7 +64,7 @@ public sealed class YamlLoader : IYamlLoader
             var fullPath = Path.GetFullPath(yamlPath);
 
             _logger.LogError("YAML configuration file not found: {YamlPath} (resolved to: {FullPath})", yamlPath, fullPath);
-            throw This.FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), yamlPath, fullPath);
+            throw FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), yamlPath, fullPath);
         }
 
         try
@@ -82,26 +81,21 @@ public sealed class YamlLoader : IYamlLoader
                     "YAML configuration file {YamlPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)",
                     yamlPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
 
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
                                              fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
             }
 
-            _logger.LogDebug("Reading YAML configuration file content from {YamlPath}", yamlPath);
             var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
                 _logger.LogError("YAML configuration file {YamlPath} is empty (file exists but contains no content)", yamlPath);
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlFileEmpty), yamlPath, Path.GetFullPath(yamlPath));
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlFileEmpty), yamlPath, Path.GetFullPath(yamlPath));
             }
 
-            _logger.LogDebug("YAML configuration file read successfully. File size: {FileSize} bytes", yamlContent.Length);
-
             // Convert YAML to JSON for deserialization (using System.Text.Json)
-            _logger.LogDebug("Converting YAML to JSON for deserialization");
             var jsonContent = ConvertYamlToJson(yamlContent);
 
-            _logger.LogDebug("Deserializing configuration from JSON");
             var config = JsonSerializer.Deserialize<SGuardConfig>(jsonContent, JsonOptions.Deserialization);
 
             if (config == null)
@@ -110,19 +104,16 @@ public sealed class YamlLoader : IYamlLoader
                     "Failed to deserialize YAML configuration from {YamlPath}. JSON deserialization returned null after YAML-to-JSON conversion",
                     yamlPath);
 
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlDeserializationReturnedNull), yamlPath, Path.GetFullPath(yamlPath),
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlDeserializationReturnedNull), yamlPath, Path.GetFullPath(yamlPath),
                                              yamlContent.Length);
             }
 
-            _logger.LogDebug("YAML configuration deserialized successfully. Found {EnvironmentCount} environments and {RuleCount} rules",
-                             config.Environments?.Count ?? 0, config.Rules?.Count ?? 0);
-
-            if (config.Environments == null || config.Environments.Count == 0)
+            if (config.Environments.Count == 0)
             {
                 _logger.LogError("YAML configuration file {YamlPath} contains no environments. Found {RuleCount} rules", yamlPath,
                                  config.Rules?.Count ?? 0);
 
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlNoEnvironments), yamlPath, Path.GetFullPath(yamlPath),
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlNoEnvironments), yamlPath, Path.GetFullPath(yamlPath),
                                              config.Rules?.Count ?? 0);
             }
 
@@ -132,14 +123,13 @@ public sealed class YamlLoader : IYamlLoader
                 _logger.LogError("YAML configuration file {YamlPath} contains too many environments. Count: {Count}, Limit: {Limit}", yamlPath,
                                  config.Environments.Count, _securityOptions.MaxEnvironmentsCount);
 
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlEnvironmentCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlEnvironmentCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
                                              config.Environments.Count, _securityOptions.MaxEnvironmentsCount,
                                              config.Environments.Count - _securityOptions.MaxEnvironmentsCount);
             }
 
             if (config.Rules == null)
             {
-                _logger.LogDebug("No rules found in YAML configuration, initializing empty rules list");
                 config.Rules = [];
             }
             else
@@ -150,7 +140,7 @@ public sealed class YamlLoader : IYamlLoader
                     _logger.LogError("YAML configuration file {YamlPath} contains too many rules. Count: {Count}, Limit: {Limit}", yamlPath,
                                      config.Rules.Count, _securityOptions.MaxRulesCount);
 
-                    throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlRuleCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
+                    throw ConfigurationException(nameof(SR.ConfigurationException_YamlRuleCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
                                                  config.Rules.Count, _securityOptions.MaxRulesCount,
                                                  config.Rules.Count - _securityOptions.MaxRulesCount);
                 }
@@ -176,7 +166,7 @@ public sealed class YamlLoader : IYamlLoader
             _logger.LogError(ex, "YAML parsing error in configuration file {YamlPath}. Error at {LineInfo}: {ErrorMessage}", yamlPath, lineInfo,
                              ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlParsingError), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message,
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlParsingError), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message,
                                          lineInfo);
         }
         catch (JsonException ex)
@@ -186,18 +176,18 @@ public sealed class YamlLoader : IYamlLoader
             _logger.LogError(ex, "JSON conversion error for YAML configuration file {YamlPath}. Error at {LineNumber}: {ErrorMessage}", yamlPath,
                              lineNumber, ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlJsonConversionError), ex, yamlPath, Path.GetFullPath(yamlPath),
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlJsonConversionError), ex, yamlPath, Path.GetFullPath(yamlPath),
                                          ex.Message, lineNumber);
         }
         catch (IOException ex)
         {
             _logger.LogError(ex, "I/O error reading YAML configuration file {YamlPath}. Error: {ErrorMessage}", yamlPath, ex.Message);
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlIOException), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlIOException), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogError(ex, "Access denied reading YAML configuration file {YamlPath}. Error: {ErrorMessage}", yamlPath, ex.Message);
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlAccessDenied), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlAccessDenied), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
         }
         catch (Exception ex)
         {
@@ -205,7 +195,7 @@ public sealed class YamlLoader : IYamlLoader
                 ex, "Unexpected error loading YAML configuration from {YamlPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", yamlPath,
                 ex.GetType().Name, ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlUnexpectedError), ex, yamlPath, Path.GetFullPath(yamlPath),
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlUnexpectedError), ex, yamlPath, Path.GetFullPath(yamlPath),
                                          ex.GetType().Name, ex.Message);
         }
     }
@@ -225,19 +215,17 @@ public sealed class YamlLoader : IYamlLoader
     /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
     public Dictionary<string, object> LoadAppSettings(string yamlPath)
     {
-        _logger.LogDebug("Loading YAML app settings from {YamlPath}", yamlPath);
-
         if (string.IsNullOrWhiteSpace(yamlPath))
         {
             _logger.LogError("YAML app settings file path is null or empty");
-            throw This.ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(yamlPath));
+            throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(yamlPath));
         }
 
         if (!SafeFileSystem.FileExists(yamlPath))
         {
             var fullPath = Path.GetFullPath(yamlPath);
             _logger.LogError("YAML app settings file not found: {YamlPath} (resolved to: {FullPath})", yamlPath, fullPath);
-            throw This.FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), yamlPath, fullPath);
+            throw FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), yamlPath, fullPath);
         }
 
         try
@@ -254,11 +242,10 @@ public sealed class YamlLoader : IYamlLoader
                     "YAML app settings file {YamlPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)",
                     yamlPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
 
-                throw This.ConfigurationException(nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
+                throw ConfigurationException(nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
                                              fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
             }
 
-            _logger.LogDebug("Reading YAML app settings file content from {YamlPath}", yamlPath);
             var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
@@ -267,13 +254,9 @@ public sealed class YamlLoader : IYamlLoader
                 return new Dictionary<string, object>();
             }
 
-            _logger.LogDebug("YAML app settings file read successfully. File size: {FileSize} bytes", yamlContent.Length);
-
             // Convert YAML to JSON for processing
-            _logger.LogDebug("Converting YAML to JSON for processing");
             var jsonContent = ConvertYamlToJson(yamlContent);
 
-            _logger.LogDebug("Parsing and flattening JSON structure");
             using var document = JsonDocument.Parse(jsonContent, JsonOptions.Document);
 
             // Pre-allocate dictionary with estimated capacity
@@ -286,7 +269,6 @@ public sealed class YamlLoader : IYamlLoader
 
             _logger.LogInformation("YAML app settings loaded successfully from {YamlPath}. Found {SettingCount} settings", yamlPath,
                                    appSettings.Count);
-            _logger.LogDebug("App settings keys: {Keys}", string.Join(", ", appSettings.Keys.Take(10)));
 
             return appSettings;
         }
@@ -301,7 +283,7 @@ public sealed class YamlLoader : IYamlLoader
             _logger.LogError(ex, "YAML parsing error in app settings file {YamlPath}. Error at {LineInfo}: {ErrorMessage}", yamlPath, lineInfo,
                              ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlParsingError), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message,
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlParsingError), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message,
                                          lineInfo);
         }
         catch (JsonException ex)
@@ -311,18 +293,18 @@ public sealed class YamlLoader : IYamlLoader
             _logger.LogError(ex, "JSON conversion error for YAML app settings file {YamlPath}. Error at {LineNumber}: {ErrorMessage}", yamlPath,
                              lineNumber, ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlJsonConversionError), ex, yamlPath, Path.GetFullPath(yamlPath),
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlJsonConversionError), ex, yamlPath, Path.GetFullPath(yamlPath),
                                          ex.Message, lineNumber);
         }
         catch (IOException ex)
         {
             _logger.LogError(ex, "I/O error reading YAML app settings file {YamlPath}. Error: {ErrorMessage}", yamlPath, ex.Message);
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlIOException), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlIOException), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
         }
         catch (UnauthorizedAccessException ex)
         {
             _logger.LogError(ex, "Access denied reading YAML app settings file {YamlPath}. Error: {ErrorMessage}", yamlPath, ex.Message);
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlAccessDenied), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlAccessDenied), ex, yamlPath, Path.GetFullPath(yamlPath), ex.Message);
         }
         catch (Exception ex)
         {
@@ -330,7 +312,7 @@ public sealed class YamlLoader : IYamlLoader
                 ex, "Unexpected error loading YAML app settings from {YamlPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", yamlPath,
                 ex.GetType().Name, ex.Message);
 
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlUnexpectedError), ex, yamlPath, Path.GetFullPath(yamlPath),
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlUnexpectedError), ex, yamlPath, Path.GetFullPath(yamlPath),
                                          ex.GetType().Name, ex.Message);
         }
     }
@@ -345,28 +327,26 @@ public sealed class YamlLoader : IYamlLoader
             // Deserialize YAML to object
             var yamlObject = _yamlDeserializer.Deserialize<object>(yamlContent);
 
-            if (!ReferenceEquals(yamlObject, null))
-            {
-                // Serialize to JSON using System.Text.Json directly (internal use, no indentation for performance)
-                return JsonSerializer.Serialize(yamlObject, JsonOptions.Internal);
-            }
-
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlDeserializationNull));
+            return !ReferenceEquals(yamlObject, null)
+                       ?
+                       // Serialize to JSON using System.Text.Json directly (internal use, no indentation for performance)
+                       JsonSerializer.Serialize(yamlObject, JsonOptions.Internal)
+                       : throw ConfigurationException(nameof(SR.ConfigurationException_YamlDeserializationNull));
         }
         catch (YamlDotNet.Core.YamlException ex)
         {
             _logger.LogError(ex, "YAML parsing error during conversion to JSON");
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlParseFailed), ex, ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlParseFailed), ex, ex.Message);
         }
         catch (JsonException ex)
         {
             _logger.LogError(ex, "JSON serialization error during YAML to JSON conversion");
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlSerializeFailed), ex, ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlSerializeFailed), ex, ex.Message);
         }
         catch (Exception ex) when (!(ex is ConfigurationException))
         {
             _logger.LogError(ex, "Unexpected error converting YAML to JSON");
-            throw This.ConfigurationException(nameof(SR.ConfigurationException_YamlConvertFailed), ex, ex.Message);
+            throw ConfigurationException(nameof(SR.ConfigurationException_YamlConvertFailed), ex, ex.Message);
         }
     }
 

@@ -5,7 +5,7 @@ namespace SGuard.ConfigValidation.Output;
 
 /// <summary>
 /// JSON output formatter that outputs validation results as JSON.
-/// Uses indented JSON format for better readability.
+/// Uses an indented JSON format for better readability.
 /// </summary>
 public sealed class JsonOutputFormatter : IOutputFormatter
 {

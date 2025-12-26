@@ -3,29 +3,26 @@ using System.Text.Json.Serialization;
 namespace SGuard.ConfigValidation.Models;
 
 /// <summary>
-/// Represents the root configuration object for SGuard configuration validation.
-/// Contains version information, environment definitions, and validation rules.
+/// Represents the root configuration for SGuard, containing version information,
+/// a list of environments, and a list of rules.
 /// </summary>
 public sealed class SGuardConfig
 {
     /// <summary>
-    /// Gets or sets the configuration version.
-    /// Required field. Must not be null or empty.
+    /// Gets the version of the configuration schema.
     /// </summary>
     [JsonPropertyName("version")]
-    public string Version { get; set; } = string.Empty;
+    public required string Version { get; init; }
 
     /// <summary>
-    /// Gets or sets the list of environment definitions (e.g., Development, Staging, Production).
-    /// Required field. Must contain at least one environment.
+    /// Gets the list of environment configurations.
     /// </summary>
     [JsonPropertyName("environments")]
-    public List<Environment> Environments { get; set; } = [];
+    public required List<Environment> Environments { get; init; }
 
     /// <summary>
-    /// Gets or sets the list of validation rules to apply to configuration files.
-    /// Optional field. Can be empty if no validation rules are needed.
+    /// Gets or sets the list of validation rules.
     /// </summary>
     [JsonPropertyName("rules")]
-    public List<Rule> Rules { get; set; } = [];
+    public required List<Rule> Rules { get; set; }
 }

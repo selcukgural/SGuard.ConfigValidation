@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Services;
 
@@ -22,7 +23,7 @@ public sealed class PathResolver : IPathResolver
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="securityOptions"/> is null.</exception>
     public PathResolver(IOptions<SecurityOptions> securityOptions)
     {
-        ArgumentNullException.ThrowIfNull(securityOptions);
+        System.ArgumentNullException.ThrowIfNull(securityOptions);
         _securityOptions = securityOptions.Value;
     }
 
@@ -44,7 +45,7 @@ public sealed class PathResolver : IPathResolver
 
         if (string.IsNullOrWhiteSpace(basePath))
         {
-            throw This.ArgumentException(nameof(SR.ArgumentException_BasePathNullOrEmpty), nameof(basePath));
+            throw ArgumentException(nameof(SR.ArgumentException_BasePathNullOrEmpty), nameof(basePath));
         }
 
         // Sanitize a cache key to prevent cache poisoning

@@ -208,10 +208,31 @@ public sealed class PerformanceTests : IDisposable
             }}");
         }
         
+        var environmentIds = string.Join(",", Enumerable.Range(0, environmentCount).Select(i => $"\"Env{i}\""));
+        
         return $@"{{
             ""version"": ""1.0"",
             ""environments"": [{string.Join(",", environments)}],
-            ""rules"": []
+            ""rules"": [
+                {{
+                    ""id"": ""test-rule"",
+                    ""environments"": [{environmentIds}],
+                    ""rule"": {{
+                        ""id"": ""test-detail"",
+                        ""conditions"": [
+                            {{
+                                ""key"": ""Test:Key"",
+                                ""condition"": [
+                                    {{
+                                        ""validator"": ""required"",
+                                        ""message"": ""Test key is required""
+                                    }}
+                                ]
+                            }}
+                        ]
+                    }}
+                }}
+            ]
         }}";
     }
 

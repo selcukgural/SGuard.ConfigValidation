@@ -11,7 +11,9 @@ using SGuard.ConfigValidation.Validators.Plugin;
 namespace SGuard.ConfigChecker.Console;
 
 internal class Program
-{
+{ 
+    private const string Logging = "Logging";
+    
     private static async Task<int> Main(string[] args)
     {
         try
@@ -71,7 +73,7 @@ internal class Program
         services.AddSingleton<IHostEnvironment>(hostEnvironment);
         services.AddLogging(builder =>
         {
-            builder.AddConfiguration(configuration.GetSection("Logging"));
+            builder.AddConfiguration(configuration.GetSection(Logging));
             builder.AddConsole();
         });
 
@@ -84,7 +86,7 @@ internal class Program
                 // Create a temporary logger factory for validation (before full DI is built)
                 using var tempLoggerFactory = LoggerFactory.Create(builder =>
                 {
-                    builder.AddConfiguration(configuration.GetSection("Logging"));
+                    builder.AddConfiguration(configuration.GetSection(Logging));
                     builder.AddConsole();
                 });
                 var securityLogger = tempLoggerFactory.CreateLogger<SecurityOptions>();

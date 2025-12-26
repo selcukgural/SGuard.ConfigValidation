@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Output;
 
@@ -18,8 +19,8 @@ public static class OutputFormatterFactory
     /// <exception cref="ArgumentException">Thrown when <paramref name="format"/> is not one of the supported formats: "json", "text", "console", null, or empty string.</exception>
     public static IOutputFormatter Create(string format, ILoggerFactory loggerFactory)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(format);
-        ArgumentNullException.ThrowIfNull(loggerFactory);
+        System.ArgumentException.ThrowIfNullOrWhiteSpace(format);
+        System.ArgumentNullException.ThrowIfNull(loggerFactory);
         
         var normalizedFormat = format.ToLowerInvariant();
         if (normalizedFormat == "json")
@@ -32,7 +33,7 @@ public static class OutputFormatterFactory
             return new ConsoleOutputFormatter(loggerFactory.CreateLogger<ConsoleOutputFormatter>());
         }
         
-        throw This.ArgumentException(nameof(SR.ArgumentException_UnknownOutputFormat), nameof(format), format);
+        throw ArgumentException(nameof(SR.ArgumentException_UnknownOutputFormat), nameof(format), format);
     }
 }
 

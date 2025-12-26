@@ -172,8 +172,6 @@ public sealed class SGuardCli
     /// <returns>Exit code indicating the result of the operation.</returns>
     public async Task<ExitCode> RunAsync(string[] args)
     {
-        _logger.LogDebug("Starting SGuard CLI with arguments: {Args}", string.Join(" ", args));
-
         try
         {
             int invokeExitCode;
@@ -244,7 +242,6 @@ public sealed class SGuardCli
             await formatter.FormatAsync(result);
 
             var exitCode = result is { IsSuccess: true, HasValidationErrors: false } ? ExitCode.Success : ExitCode.ValidationErrors;
-            _logger.LogDebug("Validation completed with exit code: {ExitCode}", exitCode);
 
             return exitCode;
         }

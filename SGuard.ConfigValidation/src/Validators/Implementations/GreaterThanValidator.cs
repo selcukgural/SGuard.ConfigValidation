@@ -44,7 +44,7 @@ public sealed class GreaterThanValidator : BaseValidator<object>
         {
             return CreateFailure(
                 $"Validation failed: Value for '{ValidatorType}' validator must be comparable. " +
-                $"Actual value type: {value?.GetType().Name ?? "null"}. " +
+                $"Actual value type: {value.GetType().Name}. " +
                 $"Expected value type: {condition.Value?.GetType().Name ?? "null"}. " +
                 "Please ensure both values are numeric or comparable types.",
                 string.Empty, value, condition.Value);

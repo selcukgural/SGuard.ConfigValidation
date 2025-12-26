@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators.Plugin;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Validators;
 
@@ -10,7 +11,7 @@ public sealed class ValidatorFactory : IValidatorFactory
 {
     // Built-in validators (always available)
     private static readonly Dictionary<string, IValidator<object>> BuiltInValidators = 
-        new Dictionary<string, IValidator<object>>(10, StringComparer.OrdinalIgnoreCase)
+        new(10, StringComparer.OrdinalIgnoreCase)
         {
             [ValidatorConstants.Required] = new RequiredValidator(),
             [ValidatorConstants.MinLength] = new MinLengthValidator(),
@@ -27,7 +28,6 @@ public sealed class ValidatorFactory : IValidatorFactory
     private readonly ReadOnlyDictionary<string, IValidator<object>> _validators;
     private readonly IReadOnlyList<string> _supportedValidatorsList;
     private readonly string _supportedValidatorsString;
-    private readonly ILogger<ValidatorFactory> _logger;
 
     /// <summary>
     /// Initializes a new instance of the ValidatorFactory with built-in validators and optional plugin discovery.
@@ -37,9 +37,8 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// <param name="pluginDirectories">Optional list of directories to scan for validator plugins.</param>
     public ValidatorFactory(ILogger<ValidatorFactory> logger, ValidatorPluginDiscovery? pluginDiscovery = null, IEnumerable<string>? pluginDirectories = null)
     {
-        ArgumentNullException.ThrowIfNull(logger);
-        _logger = logger;
-        
+        System.ArgumentNullException.ThrowIfNull(logger);
+
         // Start with built-in validators
         var validators = new Dictionary<string, IValidator<object>>(BuiltInValidators, StringComparer.OrdinalIgnoreCase);
 
@@ -52,12 +51,11 @@ public sealed class ValidatorFactory : IValidatorFactory
             {
                 if (validators.ContainsKey(pluginValidator.Key))
                 {
-                    _logger.LogWarning("Plugin validator '{ValidatorType}' conflicts with built-in validator, using built-in", pluginValidator.Key);
+                    logger.LogWarning("Plugin validator '{ValidatorType}' conflicts with built-in validator, using built-in", pluginValidator.Key);
                 }
                 else
                 {
                     validators[pluginValidator.Key] = pluginValidator.Value;
-                    _logger.LogDebug("Registered plugin validator: {ValidatorType}", pluginValidator.Key);
                 }
             }
         }
@@ -76,16 +74,16 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// <exception cref="NotSupportedException">Thrown when the validator type is not supported.</exception>
     public IValidator<object> GetValidator(string validatorType)
     {
-        ArgumentNullException.ThrowIfNull(validatorType);
+        System.ArgumentNullException.ThrowIfNull(validatorType);
         
-        // Fast path: direct lookup with optimized exception message
+        // Fast path: direct lookup with an optimized exception message
         if (_validators.TryGetValue(validatorType, out var validator))
         {
             return validator;
         }
         
-        // Slow path: throw exception with cached message
-        throw This.NotSupportedException(nameof(SR.NotSupportedException_ValidatorTypeNotSupported), validatorType, _supportedValidatorsString);
+        // Slow path: throw an exception with a cached message
+        throw NotSupportedException(nameof(SR.NotSupportedException_ValidatorTypeNotSupported), validatorType, _supportedValidatorsString);
     }
 
     /// <summary>

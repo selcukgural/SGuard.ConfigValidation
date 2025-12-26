@@ -36,7 +36,26 @@ public sealed class ConfigLoaderTests : IDisposable
       ""description"": ""Development environment""
     }
   ],
-  ""rules"": []
+  ""rules"": [
+    {
+      ""id"": ""rule1"",
+      ""environments"": [""dev""],
+      ""rule"": {
+        ""id"": ""rule1"",
+        ""conditions"": [
+          {
+            ""key"": ""ConnectionStrings:DefaultConnection"",
+            ""condition"": [
+              {
+                ""validator"": ""required"",
+                ""message"": ""Connection string is required""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }");
 
         // Act
@@ -47,7 +66,7 @@ public sealed class ConfigLoaderTests : IDisposable
         config.Version.Should().Be("1");
         config.Environments.Should().HaveCount(1);
         config.Environments[0].Id.Should().Be("dev");
-        config.Rules.Should().BeEmpty();
+        config.Rules.Should().HaveCount(1);
     }
 
     [Fact]
@@ -111,7 +130,26 @@ public sealed class ConfigLoaderTests : IDisposable
       ""path"": ""appsettings.Development.json""
     }
   ],
-  ""rules"": []
+  ""rules"": [
+    {
+      ""id"": ""rule1"",
+      ""environments"": [""dev""],
+      ""rule"": {
+        ""id"": ""rule1"",
+        ""conditions"": [
+          {
+            ""key"": ""ConnectionStrings:DefaultConnection"",
+            ""condition"": [
+              {
+                ""validator"": ""required"",
+                ""message"": ""Connection string is required""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }");
         var schemaValidator = new JsonSchemaValidator();
         var logger = NullLogger<ConfigLoader>.Instance;
@@ -174,12 +212,33 @@ public sealed class ConfigLoaderTests : IDisposable
         var securityOptions = Options.Create(new SecurityOptions());
         var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
-        // Act
-        var config = loader.LoadConfig(configPath);
+        // Act & Assert - Should throw ConfigurationException when no rules are defined
+        var exception = Assert.Throws<ConfigurationException>(() => loader.LoadConfig(configPath));
+        exception.Message.Should().Contain("No rules defined", "Exception message should indicate no rules found");
+        exception.Message.Should().Contain("0 rules", "Exception message should mention zero rules");
+    }
+    
+    [Fact]
+    public void LoadConfig_With_NoRules_Should_Throw_ConfigurationException()
+    {
+        // Arrange
+        var configPath = CreateTestConfigFile("sguard.json", @"{
+  ""version"": ""1"",
+  ""environments"": [
+    {
+      ""id"": ""dev"",
+      ""name"": ""Development"",
+      ""path"": ""appsettings.Development.json""
+    }
+  ],
+  ""rules"": []
+}");
 
-        // Assert - Should load successfully even without schema file
-        config.Should().NotBeNull();
-        config.Version.Should().Be("1");
+        // Act & Assert
+        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(configPath));
+        exception.Message.Should().Contain("No rules defined", "Exception message should indicate no rules found");
+        exception.Message.Should().Contain("0 rules", "Exception message should mention zero rules");
+        exception.Message.Should().Contain("1 environment", "Exception message should mention environment count");
     }
 
     private string CreateTestConfigFile(string fileName, string content)
@@ -199,7 +258,17 @@ environments:
   - id: dev
     name: Development
     path: appsettings.Development.json
-rules: []
+rules:
+  - id: rule1
+    environments:
+      - dev
+    rule:
+      id: rule1
+      conditions:
+        - key: ConnectionStrings:DefaultConnection
+          condition:
+            - validator: required
+              message: Connection string is required
 ");
         var yamlLogger = NullLogger<YamlLoader>.Instance;
         var securityOptions = Options.Create(new SecurityOptions());

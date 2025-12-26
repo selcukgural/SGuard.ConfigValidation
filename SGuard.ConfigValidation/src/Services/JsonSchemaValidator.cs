@@ -1,15 +1,17 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using NJsonSchema;
 using NJsonSchema.Validation;
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Resources;
 
 namespace SGuard.ConfigValidation.Services;
 
 /// <summary>
 /// Validates JSON content against JSON Schema using NJsonSchema.
 /// </summary>
-public sealed class JsonSchemaValidator : ISchemaValidator
+public sealed partial class JsonSchemaValidator : ISchemaValidator
 {
     // Cache for schema instances (file path -> schema instance)
     // Includes file modification time for cache invalidation
@@ -26,16 +28,14 @@ public sealed class JsonSchemaValidator : ISchemaValidator
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            return SchemaValidationResult.Failure(
-                "Schema validation failed: JSON content is required but was null or empty. " +
-                "Please provide valid JSON content to validate against the schema.");
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_JsonContentRequired));
+            return SchemaValidationResult.Failure(message ?? "Schema validation failed: JSON content is required but was null or empty. Please provide valid JSON content to validate against the schema.");
         }
 
         if (string.IsNullOrWhiteSpace(schemaContent))
         {
-            return SchemaValidationResult.Failure(
-                "Schema validation failed: Schema content is required but was null or empty. " +
-                "Please provide valid JSON schema content to validate against.");
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_SchemaContentRequired));
+            return SchemaValidationResult.Failure(message ?? "Schema validation failed: Schema content is required but was null or empty. Please provide valid JSON schema content to validate against.");
         }
 
         try
@@ -46,18 +46,17 @@ public sealed class JsonSchemaValidator : ISchemaValidator
         catch (JsonException ex)
         {
             var lineInfo = ex.LineNumber > 0 ? $" at line {ex.BytePositionInLine / 1024 + 1}" : "";
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_InvalidJsonFormat));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Invalid JSON format detected{lineInfo}. " +
-                $"JSON parsing error: {ex.Message}. " +
-                "Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again.");
+                string.Format(message ?? "Schema validation failed: Invalid JSON format detected{0}. JSON parsing error: {1}. Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again.",
+                    lineInfo, ex.Message));
         }
         catch (Exception ex)
         {
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_UnexpectedErrorSchemaParsing));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Unexpected error occurred during schema parsing. " +
-                $"Exception type: {ex.GetType().Name}. " +
-                $"Error: {ex.Message}. " +
-                "This is an unexpected error. Please check the logs for more details.");
+                string.Format(message ?? "Schema validation failed: Unexpected error occurred during schema parsing. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details.",
+                    ex.GetType().Name, ex.Message));
         }
     }
 
@@ -77,26 +76,23 @@ public sealed class JsonSchemaValidator : ISchemaValidator
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
-            return SchemaValidationResult.Failure(
-                "Schema validation failed: JSON content is required but was null or empty. " +
-                "Please provide valid JSON content to validate against the schema.");
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_JsonContentRequired));
+            return SchemaValidationResult.Failure(message ?? "Schema validation failed: JSON content is required but was null or empty. Please provide valid JSON content to validate against the schema.");
         }
 
         if (string.IsNullOrWhiteSpace(schemaPath))
         {
-            return SchemaValidationResult.Failure(
-                "Schema validation failed: Schema file path is required but was null or empty. " +
-                "Please provide a valid path to the JSON schema file.");
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_SchemaFilePathRequired));
+            return SchemaValidationResult.Failure(message ?? "Schema validation failed: Schema file path is required but was null or empty. Please provide a valid path to the JSON schema file.");
         }
 
         if (!SafeFileSystem.FileExists(schemaPath))
         {
             var fullPath = Path.GetFullPath(schemaPath);
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_SchemaFileNotFound));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Schema file not found. " +
-                $"Schema path: '{schemaPath}' (resolved to: '{fullPath}'). " +
-                "Please ensure the schema file exists and the path is correct. " +
-                "Check for typos, verify the file location, and ensure you have read permissions.");
+                string.Format(message ?? "Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Please ensure the schema file exists and the path is correct. Check for typos, verify the file location, and ensure you have read permissions.",
+                    schemaPath, fullPath));
         }
 
         try
@@ -108,7 +104,7 @@ public sealed class JsonSchemaValidator : ISchemaValidator
             // Check cache
             if (_schemaCache.TryGetValue(schemaPath, out var cached))
             {
-                // If file hasn't changed, use cached schema
+                // If a file hasn't changed, use cached schema
                 if (cached.LastModified == lastModified)
                 {
                     return ValidateWithSchema(jsonContent, cached.Schema);
@@ -117,8 +113,8 @@ public sealed class JsonSchemaValidator : ISchemaValidator
                 // File changed, remove from cache
                 _schemaCache.TryRemove(schemaPath, out _);
             }
-
-            // Load schema from file
+            
+            // Load schema from a file
             var schemaContent = SafeFileSystem.SafeReadAllText(schemaPath);
             var schema = JsonSchema.FromJsonAsync(schemaContent).GetAwaiter().GetResult();
             
@@ -130,41 +126,34 @@ public sealed class JsonSchemaValidator : ISchemaValidator
         catch (FileNotFoundException ex)
         {
             var fullPath = Path.GetFullPath(schemaPath);
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_SchemaFileNotFound_WithError));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Schema file not found. " +
-                $"Schema path: '{schemaPath}' (resolved to: '{fullPath}'). " +
-                $"Error: {ex.Message}. " +
-                "Please ensure the schema file exists and the path is correct.");
+                string.Format(message ?? "Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Please ensure the schema file exists and the path is correct.",
+                    schemaPath, fullPath, ex.Message));
         }
         catch (IOException ex)
         {
             var fullPath = Path.GetFullPath(schemaPath);
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_IOError));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: I/O error occurred while reading the schema file. " +
-                $"Schema path: '{schemaPath}' (resolved to: '{fullPath}'). " +
-                $"Error: {ex.Message}. " +
-                "Possible causes: file is locked by another process, disk is full, network path is unavailable, or insufficient permissions. " +
-                "Please check file access permissions and ensure the file is not in use by another application.");
+                string.Format(message ?? "Schema validation failed: I/O error occurred while reading the schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Possible causes: file is locked by another process, disk is full, network path is unavailable, or insufficient permissions. Please check file access permissions and ensure the file is not in use by another application.",
+                    schemaPath, fullPath, ex.Message));
         }
         catch (UnauthorizedAccessException ex)
         {
             var fullPath = Path.GetFullPath(schemaPath);
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_AccessDenied));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Access denied reading schema file. " +
-                $"Schema path: '{schemaPath}' (resolved to: '{fullPath}'). " +
-                $"Error: {ex.Message}. " +
-                "The current user does not have read permissions for this file. " +
-                "Please check file permissions and ensure the file is readable by the current user or process.");
+                string.Format(message ?? "Schema validation failed: Access denied reading schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. The current user does not have read permissions for this file. Please check file permissions and ensure the file is readable by the current user or process.",
+                    schemaPath, fullPath, ex.Message));
         }
         catch (Exception ex)
         {
             var fullPath = Path.GetFullPath(schemaPath);
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_UnexpectedErrorReadingFile));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Unexpected error occurred while reading schema file. " +
-                $"Schema path: '{schemaPath}' (resolved to: '{fullPath}'). " +
-                $"Exception type: {ex.GetType().Name}. " +
-                $"Error: {ex.Message}. " +
-                "This is an unexpected error. Please check the logs for more details.");
+                string.Format(message ?? "Schema validation failed: Unexpected error occurred while reading schema file. Schema path: '{0}' (resolved to: '{1}'). Exception type: {2}. Error: {3}. This is an unexpected error. Please check the logs for more details.",
+                    schemaPath, fullPath, ex.GetType().Name, ex.Message));
         }
     }
 
@@ -182,24 +171,23 @@ public sealed class JsonSchemaValidator : ISchemaValidator
                 return SchemaValidationResult.Success();
             }
 
-            var errorMessages = errors.Select(e => FormatValidationError(e)).ToList();
+            var errorMessages = errors.Select(FormatValidationError).ToList();
             return SchemaValidationResult.Failure(errorMessages);
         }
         catch (JsonException ex)
         {
             var lineInfo = ex.LineNumber > 0 ? $" at line {ex.BytePositionInLine / 1024 + 1}" : "";
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_InvalidJsonFormat));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Invalid JSON format detected{lineInfo}. " +
-                $"JSON parsing error: {ex.Message}. " +
-                "Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again.");
+                string.Format(message ?? "Schema validation failed: Invalid JSON format detected{0}. JSON parsing error: {1}. Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again.",
+                    lineInfo, ex.Message));
         }
         catch (Exception ex)
         {
+            var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_UnexpectedErrorValidation));
             return SchemaValidationResult.Failure(
-                $"Schema validation failed: Unexpected error occurred during schema validation. " +
-                $"Exception type: {ex.GetType().Name}. " +
-                $"Error: {ex.Message}. " +
-                "This is an unexpected error. Please check the logs for more details.");
+                string.Format(message ?? "Schema validation failed: Unexpected error occurred during schema validation. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details.",
+                    ex.GetType().Name, ex.Message));
         }
     }
 
@@ -217,51 +205,70 @@ public sealed class JsonSchemaValidator : ISchemaValidator
         if (message.Contains("Required properties"))
         {
             var missingProperties = ExtractMissingProperties(message);
-            return $"Schema validation failed: Missing required property at JSON path '{jsonPath}'. " +
-                   $"Property path: '{path}'. " +
-                   $"Error kind: {kind}. " +
-                   (missingProperties != null ? $"Missing properties: {missingProperties}. " : "") +
-                   "Please add the required property to the JSON document.";
+            if (missingProperties != null)
+            {
+                var template = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_MissingRequiredProperty));
+                return string.Format(template ?? "Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Missing properties: {3}. Please add the required property to the JSON document.",
+                    jsonPath, path, kind, missingProperties);
+            }
+            else
+            {
+                var template = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_MissingRequiredProperty_NoProperties));
+                return string.Format(template ?? "Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Please add the required property to the JSON document.",
+                    jsonPath, path, kind);
+            }
         }
 
         if (message.Contains("Expected type"))
         {
             var expectedType = ExtractExpectedType(message);
             var actualType = ExtractActualType(message);
-            return $"Schema validation failed: Invalid type at JSON path '{jsonPath}'. " +
-                   $"Property path: '{path}'. " +
-                   $"Expected type: {expectedType ?? kind}. " +
-                   (actualType != null ? $"Actual type: {actualType}. " : "") +
-                   "Please ensure the value matches the expected type specified in the schema.";
+            if (actualType != null)
+            {
+                var template = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_InvalidType));
+                return string.Format(template ?? "Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Actual type: {3}. Please ensure the value matches the expected type specified in the schema.",
+                    jsonPath, path, expectedType ?? kind, actualType);
+            }
+            else
+            {
+                var template = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_InvalidType_NoActualType));
+                return string.Format(template ?? "Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Please ensure the value matches the expected type specified in the schema.",
+                    jsonPath, path, expectedType ?? kind);
+            }
         }
 
-        return $"Schema validation failed: Validation error at JSON path '{jsonPath}'. " +
-               $"Property path: '{path}'. " +
-               $"Error kind: {kind}. " +
-               $"Error details: {message}. " +
-               "Please review the schema requirements and fix the JSON document accordingly.";
+        var errorTemplate = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_ValidationError));
+        return string.Format(errorTemplate ?? "Schema validation failed: Validation error at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Error details: {3}. Please review the schema requirements and fix the JSON document accordingly.",
+            jsonPath, path, kind, message);
     }
     
     private static string? ExtractMissingProperties(string message)
     {
         // Try to extract missing property names from the error message
-        // This is a simple extraction - may need refinement based on actual error format
-        var match = System.Text.RegularExpressions.Regex.Match(message, @"\[(.*?)\]");
+        // This is a simple extraction - may need refinement based on the actual error format
+        var match = ExtractMissingPropertiesRegex().Match(message);
         return match.Success ? match.Groups[1].Value : null;
     }
     
     private static string? ExtractExpectedType(string message)
     {
-        // Try to extract expected type from the error message
-        var match = System.Text.RegularExpressions.Regex.Match(message, @"Expected\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        // Try to extract the expected type from the error message
+        var match = ExtractExpectedTypeRegex().Match(message);
         return match.Success ? match.Groups[1].Value : null;
     }
     
     private static string? ExtractActualType(string message)
     {
-        // Try to extract actual type from the error message
-        var match = System.Text.RegularExpressions.Regex.Match(message, @"Actual\s+(\w+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        // Try to extract the actual type from the error message
+        var match = ExtractActualTypeRegex().Match(message);
         return match.Success ? match.Groups[1].Value : null;
     }
+
+    [GeneratedRegex(@"Expected\s+(\w+)", RegexOptions.IgnoreCase, "en-TR")]
+    private static partial Regex ExtractExpectedTypeRegex();
+    [GeneratedRegex(@"Actual\s+(\w+)", RegexOptions.IgnoreCase, "en-TR")]
+    private static partial Regex ExtractActualTypeRegex();
+    [GeneratedRegex(@"\[(.*?)\]")]
+    private static partial Regex ExtractMissingPropertiesRegex();
 }
 

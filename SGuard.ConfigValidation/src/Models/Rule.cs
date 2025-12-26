@@ -20,7 +20,7 @@ public sealed class Rule
     /// Required field. Must contain at least one environment ID. All environment IDs must exist in the environments list.
     /// </summary>
     [JsonPropertyName("environments")]
-    public required List<string> Environments { get; init; } = [];
+    public required List<string> Environments { get; init; } 
 
     /// <summary>
     /// Gets the rule details containing the validation conditions.

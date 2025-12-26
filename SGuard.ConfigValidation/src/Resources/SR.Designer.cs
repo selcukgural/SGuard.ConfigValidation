@@ -313,6 +313,15 @@ namespace SGuard.ConfigValidation.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: No rules defined. File: &apos;{0}&apos; (absolute path: &apos;{1}&apos;). Found {2} environment(s) but 0 rules. At least one rule definition is required. Please add a &apos;rules&apos; array with at least one rule object..
+        /// </summary>
+        public static string ConfigurationException_NoRules {
+            get {
+                return ResourceManager.GetString("ConfigurationException_NoRules", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Configuration validation failed: Rule count exceeds security limit. File: &apos;{0}&apos; (absolute path: &apos;{1}&apos;). Actual count: {2} rules. Maximum allowed: {3} rules. Exceeded by: {4} rules. This may indicate a DoS attack attempt. Please reduce the number of rules or contact your administrator to adjust the security limits..
         /// </summary>
         public static string ConfigurationException_RuleCountExceedsLimit {
@@ -777,6 +786,330 @@ namespace SGuard.ConfigValidation.Resources {
         public static string ConsoleOutput_ValidatedRules {
             get {
                 return ResourceManager.GetString("ConsoleOutput_ValidatedRules", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Environment ID is required but was null or empty. Context: {0}. Please provide a valid environment ID to validate..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_EnvironmentIdRequired {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_EnvironmentIdRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Environment '{0}' has an invalid or empty path. Context: {1}. Environment name: '{2}'. Please ensure the environment definition includes a valid 'path' property pointing to the app settings file..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_EnvironmentInvalidPath {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_EnvironmentInvalidPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Required file not found. Environment ID: '{0}'. File path: '{1}'. Context: {2}. Error: {3}. Please ensure the configuration file and referenced app settings files exist and are accessible..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_FileNotFound {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_FileNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Configuration error detected. Environment ID: '{0}'. Context: {1}. Error: {2}. Please review the configuration file structure and fix any validation errors..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_ConfigurationError {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_ConfigurationError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Validation error occurred. Environment ID: '{0}'. Context: {1}. Error: {2}. Please review the validation rules and fix any rule violations..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_ValidationError {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_ValidationError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Unexpected error occurred. Environment ID: '{0}'. Context: {1}. Exception type: {2}. Error: {3}. This is an unexpected error. Please check the logs for more details and contact support if the issue persists..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_UnexpectedError {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_UnexpectedError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Environment '{0}' not found in configuration.{1} Total environments in configuration: {2}. Available environment IDs: {3}. Please verify the environment ID is correct and matches one of the available environments in the configuration file..
+        /// </summary>
+        public static string RuleEngine_EnvironmentNotFound {
+            get {
+                return ResourceManager.GetString("RuleEngine_EnvironmentNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No environments found in configuration..
+        /// </summary>
+        public static string RuleEngine_NoEnvironmentsFound {
+            get {
+                return ResourceManager.GetString("RuleEngine_NoEnvironmentsFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Required file not found. Context: {0}. File path: '{1}'. Error: {2}. Please ensure the configuration file and referenced app settings files exist and are accessible..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_FileNotFound_AllEnvironments {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_FileNotFound_AllEnvironments", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation failed: Configuration error detected. Context: {0}. Error: {1}. Please review the configuration file structure and fix any validation errors..
+        /// </summary>
+        public static string RuleEngine_ValidationFailed_ConfigurationError_AllEnvironments {
+            get {
+                return ResourceManager.GetString("RuleEngine_ValidationFailed_ConfigurationError_AllEnvironments", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation error: Unsupported validator type '{0}'. Configuration key: '{1}'. Value: {2}. Error: {3}. Please use a supported validator type. Check the configuration for valid validator types..
+        /// </summary>
+        public static string ValidationMessageFormatter_UnsupportedValidator {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_UnsupportedValidator", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation error: Invalid validation argument. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Error: {3}. Please check the validator configuration and ensure all required properties are provided..
+        /// </summary>
+        public static string ValidationMessageFormatter_InvalidArgument {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_InvalidArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Validation error: Unexpected error occurred during validation. Configuration key: '{0}'. Validator type: '{1}'. Value: {2}. Exception type: {3}. Error: {4}. This is an unexpected error. Please check the logs for more details..
+        /// </summary>
+        public static string ValidationMessageFormatter_UnexpectedError {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_UnexpectedError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Environment '{0}' {1}: {2}.
+        /// </summary>
+        public static string ValidationMessageFormatter_EnvironmentError {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_EnvironmentError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Actual value: {0}. Expected value: {1}..
+        /// </summary>
+        public static string ValidationMessageFormatter_ValueComparison {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_ValueComparison", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File not found for environment '{0}': {1}.
+        /// </summary>
+        public static string ValidationMessageFormatter_FileNotFound {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_FileNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration error for environment '{0}': {1}.
+        /// </summary>
+        public static string ValidationMessageFormatter_ConfigurationError {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_ConfigurationError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Failed to load or validate environment '{0}': {1}.
+        /// </summary>
+        public static string ValidationMessageFormatter_FailedToLoadEnvironment {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_FailedToLoadEnvironment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Environment ID: '{0}'. .
+        /// </summary>
+        public static string ValidationMessageFormatter_Context_EnvironmentId {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_Context_EnvironmentId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Context: {0}. .
+        /// </summary>
+        public static string ValidationMessageFormatter_Context_ContextDesc {
+            get {
+                return ResourceManager.GetString("ValidationMessageFormatter_Context_ContextDesc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: JSON content is required but was null or empty. Please provide valid JSON content to validate against the schema..
+        /// </summary>
+        public static string JsonSchemaValidator_JsonContentRequired {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_JsonContentRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Schema content is required but was null or empty. Please provide valid JSON schema content to validate against..
+        /// </summary>
+        public static string JsonSchemaValidator_SchemaContentRequired {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_SchemaContentRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Schema file path is required but was null or empty. Please provide a valid path to the JSON schema file..
+        /// </summary>
+        public static string JsonSchemaValidator_SchemaFilePathRequired {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_SchemaFilePathRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Invalid JSON format detected{0}. JSON parsing error: {1}. Please verify the JSON syntax is valid (check for missing commas, brackets, quotes, etc.) and try again..
+        /// </summary>
+        public static string JsonSchemaValidator_InvalidJsonFormat {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_InvalidJsonFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Unexpected error occurred during schema parsing. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details..
+        /// </summary>
+        public static string JsonSchemaValidator_UnexpectedErrorSchemaParsing {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_UnexpectedErrorSchemaParsing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Please ensure the schema file exists and the path is correct. Check for typos, verify the file location, and ensure you have read permissions..
+        /// </summary>
+        public static string JsonSchemaValidator_SchemaFileNotFound {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_SchemaFileNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Schema file not found. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Please ensure the schema file exists and the path is correct..
+        /// </summary>
+        public static string JsonSchemaValidator_SchemaFileNotFound_WithError {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_SchemaFileNotFound_WithError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: I/O error occurred while reading the schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. Possible causes: file is locked by another process, disk is full, network path is unavailable, or insufficient permissions. Please check file access permissions and ensure the file is not in use by another application..
+        /// </summary>
+        public static string JsonSchemaValidator_IOError {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_IOError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Access denied reading schema file. Schema path: '{0}' (resolved to: '{1}'). Error: {2}. The current user does not have read permissions for this file. Please check file permissions and ensure the file is readable by the current user or process..
+        /// </summary>
+        public static string JsonSchemaValidator_AccessDenied {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_AccessDenied", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Unexpected error occurred while reading schema file. Schema path: '{0}' (resolved to: '{1}'). Exception type: {2}. Error: {3}. This is an unexpected error. Please check the logs for more details..
+        /// </summary>
+        public static string JsonSchemaValidator_UnexpectedErrorReadingFile {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_UnexpectedErrorReadingFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Unexpected error occurred during schema validation. Exception type: {0}. Error: {1}. This is an unexpected error. Please check the logs for more details..
+        /// </summary>
+        public static string JsonSchemaValidator_UnexpectedErrorValidation {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_UnexpectedErrorValidation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Missing properties: {3}. Please add the required property to the JSON document..
+        /// </summary>
+        public static string JsonSchemaValidator_MissingRequiredProperty {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_MissingRequiredProperty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Missing required property at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Please add the required property to the JSON document..
+        /// </summary>
+        public static string JsonSchemaValidator_MissingRequiredProperty_NoProperties {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_MissingRequiredProperty_NoProperties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Actual type: {3}. Please ensure the value matches the expected type specified in the schema..
+        /// </summary>
+        public static string JsonSchemaValidator_InvalidType {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_InvalidType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Invalid type at JSON path '{0}'. Property path: '{1}'. Expected type: {2}. Please ensure the value matches the expected type specified in the schema..
+        /// </summary>
+        public static string JsonSchemaValidator_InvalidType_NoActualType {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_InvalidType_NoActualType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Schema validation failed: Validation error at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Error details: {3}. Please review the schema requirements and fix the JSON document accordingly..
+        /// </summary>
+        public static string JsonSchemaValidator_ValidationError {
+            get {
+                return ResourceManager.GetString("JsonSchemaValidator_ValidationError", resourceCulture);
             }
         }
     }

@@ -25,9 +25,8 @@ public sealed class MaxLengthValidator : BaseValidator<object>
 
         // Get condition value in a type-safe manner
         var conditionTypedValue = condition.GetTypedValue();
-        int maxLength;
-        
-        if (!conditionTypedValue.TryGetInt32(out maxLength))
+
+        if (!conditionTypedValue.TryGetInt32(out var maxLength))
         {
             // Use JsonElementHelper for backward compatibility (may throw exception)
             maxLength = JsonElement.GetInt32(condition.Value, ValidatorType);

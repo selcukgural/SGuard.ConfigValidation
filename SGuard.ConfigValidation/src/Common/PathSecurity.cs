@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using SGuard.ConfigValidation.Resources;
+using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Common;
 
@@ -66,7 +67,7 @@ public static class PathSecurity
             var resolvedPathStr = string.IsNullOrWhiteSpace(resolvedPath) ? "null" : $"'{resolvedPath}' (empty)";
             var basePathStr = string.IsNullOrWhiteSpace(basePath) ? "null" : $"'{basePath}' (empty)";
             
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathSecurityNullEmpty), 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathSecurityNullEmpty), 
                 resolvedPathStr, basePathStr);
         }
 
@@ -86,7 +87,7 @@ public static class PathSecurity
             {
                 var resolvedFullPath = Path.GetFullPath(resolvedPath);
                 var baseFullPath = Path.GetFullPath(baseDirectory);
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathTraversalDetected), 
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathTraversalDetected), 
                     resolvedPath, resolvedFullPath, baseDirectory, baseFullPath);
             }
         }
@@ -98,7 +99,7 @@ public static class PathSecurity
         {
             var resolvedFullPath = Path.GetFullPath(resolvedPath);
             var baseFullPath = Path.GetFullPath(basePath);
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathValidationUnexpectedError), ex, 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_PathValidationUnexpectedError), ex, 
                 resolvedPath, resolvedFullPath, basePath, baseFullPath, ex.GetType().Name, ex.Message);
         }
     }
@@ -245,7 +246,7 @@ public static class PathSecurity
                 // Can't determine link target, reject to be safe
                 var pathFull = Path.GetFullPath(path);
                 var baseFull = Path.GetFullPath(basePath);
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkUnresolvable), 
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkUnresolvable), 
                     path, pathFull, basePath, baseFull);
             }
 
@@ -267,7 +268,7 @@ public static class PathSecurity
                 var pathFull = Path.GetFullPath(path);
                 var baseFull = Path.GetFullPath(baseDirectory);
                 var targetFull = Path.GetFullPath(resolvedTarget);
-                throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkAttackDetected), 
+                throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkAttackDetected), 
                     path, pathFull, resolvedTarget, targetFull, baseDirectory, baseFull);
             }
         }
@@ -280,7 +281,7 @@ public static class PathSecurity
             // If symlink validation fails, reject to be safe
             var pathFull = Path.GetFullPath(path);
             var baseFull = Path.GetFullPath(basePath);
-            throw This.UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkValidationUnexpectedError), ex, 
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_SymlinkValidationUnexpectedError), ex, 
                 path, pathFull, basePath, baseFull, ex.GetType().Name, ex.Message);
         }
     }

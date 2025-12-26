@@ -43,7 +43,6 @@ public sealed class ConfigValidator : IConfigValidator
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="config"/> or <paramref name="supportedValidators"/> is null.</exception>
     public List<string> Validate(SGuardConfig config, IEnumerable<string> supportedValidators)
     {
-        _logger.LogDebug("Starting configuration validation");
         var errors = new List<string>();
 
         // Get supported validators from factory if available, otherwise use a provided list
@@ -52,12 +51,10 @@ public sealed class ConfigValidator : IConfigValidator
         if (_validatorFactory != null)
         {
             supportedValidatorSet = new HashSet<string>(_validatorFactory.GetSupportedValidators(), StringComparer.OrdinalIgnoreCase);
-            _logger.LogDebug("Using validators from ValidatorFactory: {Validators}", string.Join(", ", supportedValidatorSet));
         }
         else
         {
             supportedValidatorSet = new HashSet<string>(supportedValidators, StringComparer.OrdinalIgnoreCase);
-            _logger.LogDebug("Using provided validators: {Validators}", string.Join(", ", supportedValidatorSet));
         }
 
         // Validate version
@@ -75,10 +72,6 @@ public sealed class ConfigValidator : IConfigValidator
         if (errors.Count > 0)
         {
             _logger.LogWarning("Configuration validation failed with {ErrorCount} error(s)", errors.Count);
-        }
-        else
-        {
-            _logger.LogDebug("Configuration validation passed");
         }
 
         return errors;

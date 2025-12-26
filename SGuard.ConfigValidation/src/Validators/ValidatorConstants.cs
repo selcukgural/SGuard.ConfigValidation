@@ -25,8 +25,8 @@ public static class ValidatorConstants
     /// <summary>
     /// Validator types that require a value to be specified.
     /// </summary>
-    public static readonly IReadOnlyList<string> ValidatorsRequiringValue = new[]
-    {
+    public static readonly IReadOnlyList<string> ValidatorsRequiringValue =
+    [
         MinLength,
         MaxLength,
         EqualsValidator,
@@ -36,27 +36,7 @@ public static class ValidatorConstants
         LessThan,
         LessThanOrEqual,
         In
-    };
-
-    /// <summary>
-    /// Comparison validator types (gt, gte, lt, lte).
-    /// </summary>
-    public static readonly IReadOnlyList<string> ComparisonValidators = new[]
-    {
-        GreaterThan,
-        GreaterThanOrEqual,
-        LessThan,
-        LessThanOrEqual
-    };
-
-    /// <summary>
-    /// String length validator types (min_len, max_len).
-    /// </summary>
-    public static readonly IReadOnlyList<string> StringLengthValidators = new[]
-    {
-        MinLength,
-        MaxLength
-    };
+    ];
 
     // Individual validator type constants
     public const string Required = "required";
