@@ -25,4 +25,11 @@ public sealed class SGuardConfig
     /// </summary>
     [JsonPropertyName("rules")]
     public required List<Rule> Rules { get; set; }
+
+    /// <summary>
+    /// Gets or sets the post-validation hooks configuration.
+    /// Hooks are executed after validation completes, based on the validation result.
+    /// </summary>
+    [JsonPropertyName("hooks")]
+    public HooksConfig? Hooks { get; set; }
 }

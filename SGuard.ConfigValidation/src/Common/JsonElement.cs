@@ -44,7 +44,7 @@ public static class JsonElement
     /// <param name="value">The value to convert.</param>
     /// <param name="validatorType">The validator type name for error messages.</param>
     /// <returns>The converted int32 value.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when conversion fails.</exception>
+    /// <exception cref="System.InvalidOperationException">Thrown when conversion fails.</exception>
     public static int GetInt32(object? value, string validatorType)
     {
         return !TryGetInt32(value, out var result) ? throw InvalidOperationException(nameof(SR.InvalidOperationException_CannotConvertToInt), value ?? "null", validatorType) : result;

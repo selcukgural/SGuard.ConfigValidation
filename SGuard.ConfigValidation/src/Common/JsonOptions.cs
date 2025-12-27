@@ -11,11 +11,14 @@ public static class JsonOptions
     /// <summary>
     /// Options for deserializing configuration files.
     /// WriteIndented is false for better performance (not needed for deserialization).
+    /// MaxDepth is set to prevent stack overflow attacks through deeply nested JSON.
     /// </summary>
     public static readonly JsonSerializerOptions Deserialization = new()
     {
         PropertyNameCaseInsensitive = true,
-        WriteIndented = false // Performance: no indentation needed for deserialization
+        WriteIndented = false, // Performance: no indentation needed for deserialization
+        MaxDepth = SecurityConstants.MaxJsonDepth, // Prevent stack overflow attacks
+        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles // Prevent circular reference DoS
     };
 
     /// <summary>

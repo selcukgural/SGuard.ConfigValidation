@@ -7,7 +7,7 @@ using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using Environment = SGuard.ConfigValidation.Models.Environment;
 
-namespace SGuard.ConfigValidation.Tests;
+namespace SGuard.ConfigValidation.Tests.Validators;
 
 public sealed class ConfigValidatorTests
 {
@@ -30,34 +30,31 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" },
-                new() { Id = "prod", Name = "Production", Path = "appsettings.Production.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments =
+            [
+                new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" },
+                new Environment { Id = "prod", Name = "Production", Path = "appsettings.Production.json" }
+            ],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev", "prod" },
+                    Environments = ["dev", "prod"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "rule-detail-1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "ConnectionStrings:DefaultConnection",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "required", Message = "Connection string is required" }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "required", Message = "Connection string is required" }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -74,12 +71,12 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" },
-                new() { Id = "dev", Name = "Development2", Path = "appsettings.Development2.json" }
-            },
-            Rules = new List<Rule>()
+            Environments =
+            [
+                new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" },
+                new Environment { Id = "dev", Name = "Development2", Path = "appsettings.Development2.json" }
+            ],
+            Rules = []
         };
 
         // Act
@@ -96,15 +93,20 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new() { Id = "rule1", Environments = new List<string> { "dev" }, RuleDetail = new RuleDetail { Id = "detail1", Conditions = new List<Condition>() } },
-                new() { Id = "rule1", Environments = new List<string> { "dev" }, RuleDetail = new RuleDetail { Id = "detail2", Conditions = new List<Condition>() } }
-            }
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
+                {
+                    Id = "rule1", Environments = ["dev"],
+                    RuleDetail = new RuleDetail { Id = "detail1", Conditions = [] }
+                },
+                new Rule
+                {
+                    Id = "rule1", Environments = ["dev"],
+                    RuleDetail = new RuleDetail { Id = "detail2", Conditions = [] }
+                }
+            ]
         };
 
         // Act
@@ -121,11 +123,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules = []
         };
 
         // Act
@@ -142,11 +141,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "" }],
+            Rules = []
         };
 
         // Act
@@ -163,11 +159,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "", Path = "appsettings.Development.json" }],
+            Rules = []
         };
 
         // Act
@@ -184,23 +177,20 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "nonexistent" },
+                    Environments = ["nonexistent"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>()
+                        Conditions = []
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -217,23 +207,20 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string>(),
+                    Environments = [],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>()
+                        Conditions = []
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -250,33 +237,27 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "Test:Key",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "unsupported_validator", Message = "Test message" }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "unsupported_validator", Message = "Test message" }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -293,33 +274,27 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "Test:Key",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "min_len", Message = "Test message", Value = null }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "min_len", Message = "Test message", Value = null }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -336,33 +311,27 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "Test:Key",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "required", Message = "" }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "required", Message = "" }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -379,33 +348,27 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "required", Message = "Test message" }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "required", Message = "Test message" }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -422,23 +385,20 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "detail1",
-                        Conditions = new List<Condition>()
+                        Conditions = []
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -455,33 +415,27 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "Test:Key",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "required", Message = "Test message" }
-                                }
+                                Validators = [new ValidatorCondition { Validator = "required", Message = "Test message" }]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -498,19 +452,16 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = null!
                 }
-            }
+            ]
         };
 
         // Act
@@ -521,14 +472,34 @@ public sealed class ConfigValidatorTests
     }
 
     [Fact]
+    public void Validate_With_EmptyRulesArray_Should_Return_Error()
+    {
+        // Arrange
+        var config = new SGuardConfig
+        {
+            Version = "1",
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules = []
+        };
+
+        // Act
+        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("'rules' array is missing or empty") || e.Contains("At least one rule definition is required"));
+        errors.Should().Contain(e => e.Contains("0 rules"));
+    }
+
+
+    [Fact]
     public void Validate_With_NoEnvironments_Should_Return_Error()
     {
         // Arrange
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>(),
-            Rules = new List<Rule>()
+            Environments = [],
+            Rules = []
         };
 
         // Act
@@ -545,11 +516,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules = []
         };
 
         // Act
@@ -566,11 +534,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = null!,
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules = []
         };
 
         // Act
@@ -587,11 +552,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings\0.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings\0.json" }],
+            Rules = []
         };
 
         // Act
@@ -609,11 +571,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings" + (char)1 + ".json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings" + (char)1 + ".json" }],
+            Rules = []
         };
 
         // Act
@@ -632,11 +591,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings//dev.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings//dev.json" }],
+            Rules = []
         };
 
         // Act
@@ -653,11 +609,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "../../../etc/passwd" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "../../../etc/passwd" }],
+            Rules = []
         };
 
         // Act
@@ -676,11 +629,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "/etc/../passwd" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "/etc/../passwd" }],
+            Rules = []
         };
 
         // Act
@@ -698,11 +648,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = longPath }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = longPath }],
+            Rules = []
         };
 
         // Act
@@ -719,11 +666,8 @@ public sealed class ConfigValidatorTests
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules = []
         };
 
         // Act

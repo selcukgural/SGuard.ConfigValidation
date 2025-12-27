@@ -31,7 +31,17 @@ environments:
     name: Development
     path: appsettings.Development.json
     description: Development environment
-rules: []
+rules:
+  - id: test-rule
+    environments:
+      - dev
+    rule:
+      id: rule-detail-1
+      conditions:
+        - key: Test:Key
+          condition:
+            - validator: required
+              message: Test message
 ");
 
         // Act
@@ -43,7 +53,27 @@ rules: []
         config.Environments.Should().HaveCount(1);
         config.Environments[0].Id.Should().Be("dev");
         config.Environments[0].Name.Should().Be("Development");
-        config.Rules.Should().BeEmpty();
+        config.Rules.Should().HaveCount(1);
+        config.Rules[0].Id.Should().Be("test-rule");
+    }
+
+    [Fact]
+    public void LoadConfig_With_EmptyRulesArray_Should_Throw_ConfigurationException()
+    {
+        // Arrange
+        var yamlPath = CreateTestYamlFile("empty-rules.yaml", @"
+version: '1'
+environments:
+  - id: dev
+    name: Development
+    path: appsettings.Development.json
+rules: []
+");
+
+        // Act & Assert
+        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(yamlPath));
+        exception.Message.Should().Contain("No rules defined");
+        exception.Message.Should().Contain("0 rules");
     }
 
     [Fact]

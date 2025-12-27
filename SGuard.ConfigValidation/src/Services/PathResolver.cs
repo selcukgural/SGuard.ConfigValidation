@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Services.Abstract;
 using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Services;
@@ -20,7 +21,7 @@ public sealed class PathResolver : IPathResolver
     /// Initializes a new instance of the PathResolver class.
     /// </summary>
     /// <param name="securityOptions">Security options configured via IOptions pattern.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="securityOptions"/> is null.</exception>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="securityOptions"/> is null.</exception>
     public PathResolver(IOptions<SecurityOptions> securityOptions)
     {
         System.ArgumentNullException.ThrowIfNull(securityOptions);
@@ -35,7 +36,35 @@ public sealed class PathResolver : IPathResolver
     /// <param name="path">The path to resolve (can be relative or absolute).</param>
     /// <param name="basePath">The base path used for resolving relative paths.</param>
     /// <returns>An absolute path that is guaranteed to be within the base directory.</returns>
-    /// <exception cref="UnauthorizedAccessException">Thrown when the resolved path is outside the base directory (path traversal attempt).</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when the resolved path is outside the base directory (path traversal attempt).</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Options;
+    /// using SGuard.ConfigValidation.Common;
+    /// using SGuard.ConfigValidation.Services;
+    /// 
+    /// var securityOptions = Options.Create(new SecurityOptions());
+    /// var pathResolver = new PathResolver(securityOptions);
+    /// 
+    /// try
+    /// {
+    ///     // Resolve a relative path
+    ///     var basePath = "/app/config";
+    ///     var relativePath = "appsettings.Production.json";
+    ///     var resolvedPath = pathResolver.ResolvePath(relativePath, basePath);
+    ///     Console.WriteLine($"Resolved path: {resolvedPath}");
+    ///     
+    ///     // Resolve an absolute path (validated against base)
+    ///     var absolutePath = "/app/config/appsettings.Dev.json";
+    ///     var validatedPath = pathResolver.ResolvePath(absolutePath, basePath);
+    ///     Console.WriteLine($"Validated path: {validatedPath}");
+    /// }
+    /// catch (UnauthorizedAccessException ex)
+    /// {
+    ///     Console.WriteLine($"Path traversal attempt detected: {ex.Message}");
+    /// }
+    /// </code>
+    /// </example>
     public string ResolvePath(string path, string basePath)
     {
         if (string.IsNullOrWhiteSpace(path))

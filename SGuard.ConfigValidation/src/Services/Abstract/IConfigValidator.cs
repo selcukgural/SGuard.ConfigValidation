@@ -1,6 +1,6 @@
 using SGuard.ConfigValidation.Models;
 
-namespace SGuard.ConfigValidation.Services;
+namespace SGuard.ConfigValidation.Services.Abstract;
 
 /// <summary>
 /// Interface for validating SGuard configuration structure and integrity.

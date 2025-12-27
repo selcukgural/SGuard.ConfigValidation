@@ -5,6 +5,8 @@ using NJsonSchema;
 using NJsonSchema.Validation;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Services.Abstract;
 
 namespace SGuard.ConfigValidation.Services;
 
@@ -22,9 +24,51 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// </summary>
     /// <param name="jsonContent">The JSON content to validate.</param>
     /// <param name="schemaContent">The JSON schema content.</param>
-    /// <returns>A <see cref="SchemaValidationResult"/> containing validation errors if any.</returns>
-    /// <exception cref="JsonException">Thrown when the JSON or schema format is invalid.</exception>
-    public SchemaValidationResult Validate(string jsonContent, string schemaContent)
+    /// <returns>A task that represents the asynchronous validation operation. The task result contains a <see cref="SchemaValidationResult"/> with validation errors if any.</returns>
+    /// <exception cref="System.Text.Json.JsonException">Thrown when the JSON or schema format is invalid.</exception>
+    /// <example>
+    /// <code>
+    /// using SGuard.ConfigValidation.Services;
+    /// 
+    /// var schemaValidator = new JsonSchemaValidator();
+    /// 
+    /// var jsonContent = """
+    /// {
+    ///   "version": "1",
+    ///   "environments": [{"id": "dev", "name": "Development", "path": "appsettings.Dev.json"}],
+    ///   "rules": []
+    /// }
+    /// """;
+    /// 
+    /// var schemaContent = """
+    /// {
+    ///   "type": "object",
+    ///   "properties": {
+    ///     "version": {"type": "string"},
+    ///     "environments": {"type": "array"},
+    ///     "rules": {"type": "array"}
+    ///   },
+    ///   "required": ["version", "environments"]
+    /// }
+    /// """;
+    /// 
+    /// var result = await schemaValidator.ValidateAsync(jsonContent, schemaContent);
+    /// 
+    /// if (!result.IsValid)
+    /// {
+    ///     Console.WriteLine("Schema validation failed:");
+    ///     foreach (var error in result.Errors)
+    ///     {
+    ///         Console.WriteLine($"  - {error}");
+    ///     }
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine("Schema validation passed!");
+    /// }
+    /// </code>
+    /// </example>
+    public async Task<SchemaValidationResult> ValidateAsync(string jsonContent, string schemaContent)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
@@ -40,7 +84,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
 
         try
         {
-            var schema = JsonSchema.FromJsonAsync(schemaContent).GetAwaiter().GetResult();
+            var schema = await JsonSchema.FromJsonAsync(schemaContent);
             return ValidateWithSchema(jsonContent, schema);
         }
         catch (JsonException ex)
@@ -67,12 +111,35 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// </summary>
     /// <param name="jsonContent">The JSON content to validate.</param>
     /// <param name="schemaPath">The path to the JSON schema file.</param>
-    /// <returns>A <see cref="SchemaValidationResult"/> containing validation errors if any.</returns>
-    /// <exception cref="FileNotFoundException">Thrown when the schema file does not exist.</exception>
-    /// <exception cref="IOException">Thrown when an I/O error occurs while reading the schema file.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access to the schema file is denied.</exception>
-    /// <exception cref="JsonException">Thrown when the JSON or schema format is invalid.</exception>
-    public SchemaValidationResult ValidateAgainstFile(string jsonContent, string schemaPath)
+    /// <returns>A task that represents the asynchronous validation operation. The task result contains a <see cref="SchemaValidationResult"/> with validation errors if any.</returns>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the schema file does not exist.</exception>
+    /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the schema file.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when access to the schema file is denied.</exception>
+    /// <exception cref="System.Text.Json.JsonException">Thrown when the JSON or schema format is invalid.</exception>
+    /// <example>
+    /// <code>
+    /// using SGuard.ConfigValidation.Services;
+    /// 
+    /// var schemaValidator = new JsonSchemaValidator();
+    /// 
+    /// var jsonContent = await File.ReadAllTextAsync("sguard.json");
+    /// var result = await schemaValidator.ValidateAgainstFileAsync(jsonContent, "sguard.schema.json");
+    /// 
+    /// if (!result.IsValid)
+    /// {
+    ///     Console.WriteLine("Schema validation failed:");
+    ///     foreach (var error in result.Errors)
+    ///     {
+    ///         Console.WriteLine($"  - {error}");
+    ///     }
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine("Schema validation passed!");
+    /// }
+    /// </code>
+    /// </example>
+    public async Task<SchemaValidationResult> ValidateAgainstFileAsync(string jsonContent, string schemaPath)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
@@ -116,7 +183,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
             
             // Load schema from a file
             var schemaContent = SafeFileSystem.SafeReadAllText(schemaPath);
-            var schema = JsonSchema.FromJsonAsync(schemaContent).GetAwaiter().GetResult();
+            var schema = await JsonSchema.FromJsonAsync(schemaContent);
             
             // Cache the schema with modification time
             _schemaCache.TryAdd(schemaPath, (schema, lastModified));

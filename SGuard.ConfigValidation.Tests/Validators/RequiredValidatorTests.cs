@@ -2,7 +2,7 @@ using FluentAssertions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Validators;
 
-namespace SGuard.ConfigValidation.Tests;
+namespace SGuard.ConfigValidation.Tests.Validators;
 
 public sealed class RequiredValidatorTests
 {

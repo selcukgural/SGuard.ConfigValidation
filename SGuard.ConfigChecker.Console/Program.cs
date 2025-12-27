@@ -4,7 +4,9 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Hooks;
 using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Validators;
 using SGuard.ConfigValidation.Validators.Plugin;
 
@@ -18,9 +20,12 @@ internal class Program
     {
         try
         {
+            // Check for verbose flag before setting up services
+            var isVerbose = args.Contains("--verbose") || args.Contains("-v");
+            
             // Setup dependency injection
             var serviceCollection = new ServiceCollection();
-            ConfigureServices(serviceCollection);
+            ConfigureServices(serviceCollection, isVerbose);
             
             var serviceProvider = serviceCollection.BuildServiceProvider();
             var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
@@ -47,7 +52,7 @@ internal class Program
         }
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    private static void ConfigureServices(IServiceCollection services, bool isVerbose = false)
     {
         // Get environment name - .NET standard: DOTNET_ENVIRONMENT (preferred) or ASPNETCORE_ENVIRONMENT (fallback)
         var environmentName = GetEnvironmentName();
@@ -75,6 +80,13 @@ internal class Program
         {
             builder.AddConfiguration(configuration.GetSection(Logging));
             builder.AddConsole();
+            
+            // Override logging level to Debug if verbose mode is enabled
+            if (isVerbose)
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                builder.AddFilter("SGuard", LogLevel.Debug);
+            }
         });
 
         // Register SecurityOptions from configuration using the IOptions pattern
@@ -88,6 +100,13 @@ internal class Program
                 {
                     builder.AddConfiguration(configuration.GetSection(Logging));
                     builder.AddConsole();
+                    
+                    // Override logging level to Debug if verbose mode is enabled
+                    if (isVerbose)
+                    {
+                        builder.SetMinimumLevel(LogLevel.Debug);
+                        builder.AddFilter("SGuard", LogLevel.Debug);
+                    }
                 });
                 var securityLogger = tempLoggerFactory.CreateLogger<SecurityOptions>();
                 options.ValidateAndClamp(securityLogger);
@@ -105,6 +124,10 @@ internal class Program
         services.AddSingleton<IFileValidator, FileValidator>();
         services.AddSingleton<IPathResolver, PathResolver>();
         services.AddSingleton<IRuleEngine, RuleEngine>();
+        
+        // Register hook services
+        services.AddSingleton<HookFactory>();
+        services.AddSingleton<HookExecutor>();
         
         // Register output formatters
         services.AddSingleton<ConfigValidation.Output.IOutputFormatter, ConfigValidation.Output.ConsoleOutputFormatter>();

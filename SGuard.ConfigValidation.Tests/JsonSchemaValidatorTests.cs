@@ -16,7 +16,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Validate_With_ValidJson_Should_ReturnSuccess()
+    public async Task Validate_With_ValidJson_Should_ReturnSuccess()
     {
         // Arrange
         var schema = @"{
@@ -29,7 +29,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         var json = @"{ ""name"": ""test"" }";
 
         // Act
-        var result = _validator.Validate(json, schema);
+        var result = await _validator.ValidateAsync(json, schema);
 
         // Assert
         result.Should().NotBeNull();
@@ -38,7 +38,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Validate_With_InvalidJson_Should_ReturnFailure()
+    public async Task Validate_With_InvalidJson_Should_ReturnFailure()
     {
         // Arrange
         var schema = @"{
@@ -52,7 +52,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         var json = @"{ ""age"": 30 }"; // Missing required "name" property
 
         // Act
-        var result = _validator.Validate(json, schema);
+        var result = await _validator.ValidateAsync(json, schema);
 
         // Assert
         result.Should().NotBeNull();
@@ -62,7 +62,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Validate_With_EmptyJson_Should_ReturnFailure()
+    public async Task Validate_With_EmptyJson_Should_ReturnFailure()
     {
         // Arrange
         var schema = @"{
@@ -71,7 +71,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
 }";
 
         // Act
-        var result = _validator.Validate(string.Empty, schema);
+        var result = await _validator.ValidateAsync(string.Empty, schema);
 
         // Assert
         result.Should().NotBeNull();
@@ -80,7 +80,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void ValidateAgainstFile_With_ValidFile_Should_ReturnSuccess()
+    public async Task ValidateAgainstFile_With_ValidFile_Should_ReturnSuccess()
     {
         // Arrange
         var schemaPath = CreateTestFile("schema.json", @"{
@@ -93,7 +93,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         var json = @"{ ""name"": ""test"" }";
 
         // Act
-        var result = _validator.ValidateAgainstFile(json, schemaPath);
+        var result = await _validator.ValidateAgainstFileAsync(json, schemaPath);
 
         // Assert
         result.Should().NotBeNull();
@@ -102,14 +102,14 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void ValidateAgainstFile_With_NonExistentFile_Should_ReturnFailure()
+    public async Task ValidateAgainstFile_With_NonExistentFile_Should_ReturnFailure()
     {
         // Arrange
         var nonExistentPath = Path.Combine(_testDirectory, "nonexistent.json");
         var json = @"{ ""name"": ""test"" }";
 
         // Act
-        var result = _validator.ValidateAgainstFile(json, nonExistentPath);
+        var result = await _validator.ValidateAgainstFileAsync(json, nonExistentPath);
 
         // Assert
         result.Should().NotBeNull();
@@ -118,7 +118,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Validate_With_InvalidSchema_Should_HandleGracefully()
+    public async Task Validate_With_InvalidSchema_Should_HandleGracefully()
     {
         // Arrange
         // NJsonSchema can parse even minimal schemas, so we'll test with a schema that doesn't match the JSON structure
@@ -133,7 +133,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         var json = @"{ ""name"": ""test"" }"; // Missing requiredField
 
         // Act
-        var result = _validator.Validate(json, schema);
+        var result = await _validator.ValidateAsync(json, schema);
 
         // Assert
         result.Should().NotBeNull();
@@ -142,7 +142,7 @@ public sealed class JsonSchemaValidatorTests : IDisposable
     }
 
     [Fact]
-    public void ValidateAgainstFile_With_CachedSchema_Should_Use_Cache()
+    public async Task ValidateAgainstFile_With_CachedSchema_Should_Use_Cache()
     {
         // Arrange
         var schemaPath = CreateTestFile("schema.json", @"{
@@ -155,8 +155,8 @@ public sealed class JsonSchemaValidatorTests : IDisposable
         var json = @"{ ""name"": ""test"" }";
 
         // Act - Validate against same schema file twice
-        var result1 = _validator.ValidateAgainstFile(json, schemaPath);
-        var result2 = _validator.ValidateAgainstFile(json, schemaPath);
+        var result1 = await _validator.ValidateAgainstFileAsync(json, schemaPath);
+        var result2 = await _validator.ValidateAgainstFileAsync(json, schemaPath);
 
         // Assert - Both should succeed (schema is cached)
         result1.Should().NotBeNull();

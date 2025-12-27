@@ -1,4 +1,5 @@
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Results;
 
 namespace SGuard.ConfigValidation.Output;
 

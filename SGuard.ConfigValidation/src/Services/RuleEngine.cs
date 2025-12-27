@@ -5,6 +5,8 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 
@@ -63,12 +65,47 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="configPath">The path to the configuration file.</param>
     /// <param name="environmentId">The ID of the environment to validate.</param>
     /// <returns>A <see cref="RuleEngineResult"/> containing the validation results for the specified environment.</returns>
-    /// <exception cref="FileNotFoundException">Thrown when the configuration file or environment file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the configuration is invalid or the environment is not found.</exception>
-    public RuleEngineResult ValidateEnvironment(string configPath, string environmentId)
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the configuration file or environment file does not exist.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the configuration is invalid or the environment is not found.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using Microsoft.Extensions.Options;
+    /// using SGuard.ConfigValidation.Common;
+    /// using SGuard.ConfigValidation.Services;
+    /// using SGuard.ConfigValidation.Validators;
+    /// 
+    /// var securityOptions = Options.Create(new SecurityOptions());
+    /// var logger = NullLogger&lt;RuleEngine&gt;.Instance;
+    /// var validatorFactory = new ValidatorFactory(NullLogger&lt;ValidatorFactory&gt;.Instance);
+    /// var configLoader = new ConfigLoader(NullLogger&lt;ConfigLoader&gt;.Instance, securityOptions);
+    /// var fileValidator = new FileValidator(validatorFactory, NullLogger&lt;FileValidator&gt;.Instance);
+    /// var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, logger, securityOptions);
+    /// 
+    /// var result = ruleEngine.ValidateEnvironment("sguard.json", "prod");
+    /// 
+    /// if (result.IsSuccess &amp;&amp; !result.HasValidationErrors)
+    /// {
+    ///     Console.WriteLine("Validation passed!");
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine($"Validation failed: {result.ErrorMessage}");
+    ///     foreach (var validationResult in result.ValidationResults)
+    ///     {
+    ///         foreach (var error in validationResult.Errors)
+    ///         {
+    ///             Console.WriteLine($"  - {error.Key}: {error.Message}");
+    ///         }
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    public async Task<RuleEngineResult> ValidateEnvironmentAsync(string configPath, string environmentId)
     {
-        return ValidateEnvironmentInternal(
-            () => _configLoader.LoadConfig(configPath),
+        return await ValidateEnvironmentInternalAsync(
+            async () => await _configLoader.LoadConfigAsync(configPath),
             environmentId,
             (config, env) => ValidateSingleEnvironment(env, config, environmentId, configPath),
             $"from config {configPath}",
@@ -80,12 +117,38 @@ public sealed class RuleEngine : IRuleEngine
     /// </summary>
     /// <param name="configPath">The path to the configuration file.</param>
     /// <returns>A <see cref="RuleEngineResult"/> containing validation results for all environments.</returns>
-    /// <exception cref="FileNotFoundException">Thrown when the configuration file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the configuration is invalid.</exception>
-    public RuleEngineResult ValidateAllEnvironments(string configPath)
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the configuration file does not exist.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the configuration is invalid.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using Microsoft.Extensions.Options;
+    /// using SGuard.ConfigValidation.Common;
+    /// using SGuard.ConfigValidation.Services;
+    /// using SGuard.ConfigValidation.Validators;
+    /// 
+    /// var securityOptions = Options.Create(new SecurityOptions());
+    /// var logger = NullLogger&lt;RuleEngine&gt;.Instance;
+    /// var validatorFactory = new ValidatorFactory(NullLogger&lt;ValidatorFactory&gt;.Instance);
+    /// var configLoader = new ConfigLoader(NullLogger&lt;ConfigLoader&gt;.Instance, securityOptions);
+    /// var fileValidator = new FileValidator(validatorFactory, NullLogger&lt;FileValidator&gt;.Instance);
+    /// var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, logger, securityOptions);
+    /// 
+    /// var result = ruleEngine.ValidateAllEnvironments("sguard.json");
+    /// 
+    /// var successCount = result.ValidationResults.Count(r => r.IsValid);
+    /// var failureCount = result.ValidationResults.Count - successCount;
+    /// 
+    /// Console.WriteLine($"Validated {result.ValidationResults.Count} environment(s)");
+    /// Console.WriteLine($"  Passed: {successCount}");
+    /// Console.WriteLine($"  Failed: {failureCount}");
+    /// </code>
+    /// </example>
+    public async Task<RuleEngineResult> ValidateAllEnvironmentsAsync(string configPath)
     {
-        return ValidateAllEnvironmentsCommon(
-            () => _configLoader.LoadConfig(configPath),
+        return await ValidateAllEnvironmentsCommonAsync(
+            async () => await _configLoader.LoadConfigAsync(configPath),
             config => ValidateAllEnvironmentsInternal(config, configPath),
             $"from config {configPath}");
     }
@@ -96,12 +159,12 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="configJson">The JSON configuration string.</param>
     /// <param name="environmentId">The ID of the environment to validate.</param>
     /// <returns>A <see cref="RuleEngineResult"/> containing the validation results for the specified environment.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="configJson"/> is null or empty, or when <paramref name="environmentId"/> is null or empty.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the JSON configuration is invalid or the environment is not found.</exception>
-    public RuleEngineResult ValidateEnvironmentFromJson(string configJson, string environmentId)
+    /// <exception cref="System.ArgumentException">Thrown when <paramref name="configJson"/> is null or empty, or when <paramref name="environmentId"/> is null or empty.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the JSON configuration is invalid or the environment is not found.</exception>
+    public async Task<RuleEngineResult> ValidateEnvironmentFromJsonAsync(string configJson, string environmentId)
     {
-        return ValidateEnvironmentInternal(
-            () => ParseConfigJson(configJson),
+        return await ValidateEnvironmentInternalAsync(
+            async () => await Task.FromResult(ParseConfigJson(configJson)),
             environmentId,
             (config, env) => ValidateSingleEnvironmentFromJson(env, config, environmentId),
             "from JSON",
@@ -113,12 +176,12 @@ public sealed class RuleEngine : IRuleEngine
     /// </summary>
     /// <param name="configJson">The JSON configuration string.</param>
     /// <returns>A <see cref="RuleEngineResult"/> containing validation results for all environments.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="configJson"/> is null or empty.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the JSON configuration is invalid.</exception>
-    public RuleEngineResult ValidateAllEnvironmentsFromJson(string configJson)
+    /// <exception cref="System.ArgumentException">Thrown when <paramref name="configJson"/> is null or empty.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the JSON configuration is invalid.</exception>
+    public async Task<RuleEngineResult> ValidateAllEnvironmentsFromJsonAsync(string configJson)
     {
-        return ValidateAllEnvironmentsCommon(
-            () => ParseConfigJson(configJson),
+        return await ValidateAllEnvironmentsCommonAsync(
+            async () => await Task.FromResult(ParseConfigJson(configJson)),
             ValidateAllEnvironmentsFromJsonInternal,
             "from JSON");
     }
@@ -135,8 +198,8 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Common validation logic for single environment validation (file-based or JSON-based).
     /// </summary>
-    private RuleEngineResult ValidateEnvironmentInternal(
-        Func<SGuardConfig> loadConfig,
+    private async Task<RuleEngineResult> ValidateEnvironmentInternalAsync(
+        Func<Task<SGuardConfig>> loadConfig,
         string environmentId,
         Func<SGuardConfig, Models.Environment, FileValidationResult> validateEnvironment,
         string contextDescription,
@@ -152,7 +215,7 @@ public sealed class RuleEngine : IRuleEngine
 
         try
         {
-            var config = loadConfig();
+            var config = await loadConfig();
 
             var environment = FindEnvironment(config, environmentId);
             if (environment == null)
@@ -206,14 +269,14 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Common validation logic for all environments validation (file-based or JSON-based).
     /// </summary>
-    private RuleEngineResult ValidateAllEnvironmentsCommon(
-        Func<SGuardConfig> loadConfig,
+    private async Task<RuleEngineResult> ValidateAllEnvironmentsCommonAsync(
+        Func<Task<SGuardConfig>> loadConfig,
         Func<SGuardConfig, List<FileValidationResult>> validateAllEnvironments,
         string contextDescription)
     {
         try
         {
-            var config = loadConfig();
+            var config = await loadConfig();
 
             if (config.Environments.Count == 0)
             {
@@ -459,7 +522,7 @@ public sealed class RuleEngine : IRuleEngine
                 throw ConfigurationException(nameof(SR.ConfigurationException_JsonDeserializationFailed));
             }
 
-            if (config.Environments == null || config.Environments.Count == 0)
+            if (config.Environments.Count == 0)
             {
                 throw ConfigurationException(nameof(SR.ConfigurationException_JsonNoEnvironments));
             }

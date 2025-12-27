@@ -179,7 +179,7 @@ public sealed class SGuardCliInputSanitizationTests
         {
             throw new InvalidOperationException("ValidateAndSanitizePath method not found");
         }
-        var result = method.Invoke(null, new object[] { path, parameterName, logger });
+        var result = method.Invoke(null, [path, parameterName, logger]);
         if (result == null)
         {
             throw new InvalidOperationException("Method returned null");
@@ -195,7 +195,7 @@ public sealed class SGuardCliInputSanitizationTests
         {
             throw new InvalidOperationException("ValidateAndSanitizeEnvironmentId method not found");
         }
-        var result = method.Invoke(null, new object[] { environmentId, logger });
+        var result = method.Invoke(null, [environmentId, logger]);
         if (result == null)
         {
             throw new InvalidOperationException("Method returned null");

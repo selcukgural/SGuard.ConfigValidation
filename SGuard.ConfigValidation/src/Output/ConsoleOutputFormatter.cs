@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Results;
 
 namespace SGuard.ConfigValidation.Output;
 
@@ -27,7 +28,7 @@ public sealed class ConsoleOutputFormatter : IOutputFormatter
     /// </summary>
     /// <param name="result">The rule engine result to format and output.</param>
     /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation. Always returns a completed task as this operation is synchronous.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="result"/> is null.</exception>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="result"/> is null.</exception>
     public ValueTask FormatAsync(RuleEngineResult result)
     {
         ArgumentNullException.ThrowIfNull(result);

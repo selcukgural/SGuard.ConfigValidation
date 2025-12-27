@@ -1,6 +1,6 @@
 using SGuard.ConfigValidation.Models;
 
-namespace SGuard.ConfigValidation.Services;
+namespace SGuard.ConfigValidation.Services.Abstract;
 
 /// <summary>
 /// Interface for loading YAML configuration files.
@@ -12,8 +12,8 @@ public interface IYamlLoader
     /// </summary>
     /// <param name="yamlPath">The path to the YAML configuration file.</param>
     /// <returns>The loaded SGuard configuration.</returns>
-    /// <exception cref="ArgumentException">Thrown when yamlPath is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when yamlPath is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
     SGuardConfig LoadConfig(string yamlPath);
 
@@ -22,8 +22,8 @@ public interface IYamlLoader
     /// </summary>
     /// <param name="yamlPath">The path to the YAML app settings file.</param>
     /// <returns>A dictionary containing flattened app settings with colon-separated keys.</returns>
-    /// <exception cref="ArgumentException">Thrown when yamlPath is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when yamlPath is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
     Dictionary<string, object> LoadAppSettings(string yamlPath);
 }

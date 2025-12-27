@@ -5,6 +5,7 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 using JsonElement = System.Text.Json.JsonElement;
@@ -15,7 +16,7 @@ namespace SGuard.ConfigValidation.Services;
 /// Service for loading configuration files and app settings.
 /// </summary>
 public sealed class ConfigLoader : IConfigLoader
-    {
+{
     // Use shared static options for better performance (immutable, thread-safe)
     private readonly ISchemaValidator? _schemaValidator;
     private readonly IConfigValidator? _configValidator;
@@ -45,18 +46,47 @@ public sealed class ConfigLoader : IConfigLoader
 
         /// <summary>
         /// Loads the SGuard configuration from the specified file path.
-        /// Supports both JSON and YAML files (if the YAML loader is provided).
+        /// Supports both JSON (default) and YAML files (if the YAML loader is provided).
+        /// JSON is the default format for configuration files like `sguard.json`.
         /// Validates the configuration against a schema if a schema validator is provided.
         /// Validates the configuration structure if a config validator is provided.
         /// </summary>
-        /// <param name="configPath">The path to the configuration file (JSON or YAML).</param>
+        /// <param name="configPath">The path to the configuration file (JSON or YAML). JSON is the default format.</param>
         /// <returns>The loaded and validated <see cref="SGuardConfig"/> instance.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="configPath"/> is null or empty.</exception>
-        /// <exception cref="FileNotFoundException">Thrown when the configuration file does not exist.</exception>
-        /// <exception cref="ConfigurationException">Thrown when the configuration file is invalid, empty, malformed, fails schema validation, or fails structure validation.</exception>
-        /// <exception cref="JsonException">Thrown when the JSON content is invalid.</exception>
-        /// <exception cref="IOException">Thrown when an I/O error occurs while reading the file.</exception>
-        public SGuardConfig LoadConfig(string configPath)
+        /// <exception cref="System.ArgumentException">Thrown when <paramref name="configPath"/> is null or empty.</exception>
+        /// <exception cref="System.IO.FileNotFoundException">Thrown when the configuration file does not exist.</exception>
+        /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the configuration file is invalid, empty, malformed, fails schema validation, or fails structure validation.</exception>
+        /// <exception cref="System.Text.Json.JsonException">Thrown when the JSON content is invalid.</exception>
+        /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the file.</exception>
+        /// <example>
+        /// <code>
+        /// using Microsoft.Extensions.Logging;
+        /// using Microsoft.Extensions.Logging.Abstractions;
+        /// using Microsoft.Extensions.Options;
+        /// using SGuard.ConfigValidation.Common;
+        /// using SGuard.ConfigValidation.Services;
+        /// 
+        /// var securityOptions = Options.Create(new SecurityOptions());
+        /// var logger = NullLogger&lt;ConfigLoader&gt;.Instance;
+        /// var configLoader = new ConfigLoader(logger, securityOptions);
+        /// 
+        /// try
+        /// {
+        ///     var config = await configLoader.LoadConfigAsync("sguard.json");
+        ///     Console.WriteLine($"Loaded {config.Environments.Count} environment(s)");
+        ///     Console.WriteLine($"Loaded {config.Rules.Count} rule(s)");
+        /// }
+        /// catch (FileNotFoundException ex)
+        /// {
+        ///     Console.WriteLine($"Configuration file not found: {ex.FileName}");
+        /// }
+        /// catch (ConfigurationException ex)
+        /// {
+        ///     Console.WriteLine($"Configuration error: {ex.Message}");
+        /// }
+        /// </code>
+        /// </example>
+        public async Task<SGuardConfig> LoadConfigAsync(string configPath)
         {
             if (string.IsNullOrWhiteSpace(configPath))
             {
@@ -64,12 +94,7 @@ public sealed class ConfigLoader : IConfigLoader
                 throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(configPath));
             }
 
-            if (!SafeFileSystem.FileExists(configPath))
-            {
-                var fullPath = Path.GetFullPath(configPath);
-                _logger.LogError("Configuration file not found: {ConfigPath} (resolved to: {FullPath})", configPath, fullPath);
-                throw FileNotFoundException(configPath, nameof(SR.ConfigurationException_FileNotFound), configPath, fullPath);
-            }
+            FileSecurity.EnsureFileExists(configPath, nameof(SR.ConfigurationException_FileNotFound), _logger);
 
             // Check if a file is YAML
             if (IsYamlFile(configPath) && _yamlLoader != null)
@@ -80,16 +105,7 @@ public sealed class ConfigLoader : IConfigLoader
             try
             {
                 // Check file size before reading to prevent DoS attacks
-                var fileInfo = new FileInfo(configPath);
-                if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
-                {
-                    var fileSizeMb = fileInfo.Length / (1024.0 * 1024.0);
-                    var maxSizeMb = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
-                    _logger.LogError("Configuration file {ConfigPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)", 
-                        configPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
-                    throw ConfigurationException(nameof(SR.ConfigurationException_FileSizeExceedsLimit), 
-                        configPath, Path.GetFullPath(configPath), fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
-                }
+                FileSecurity.ValidateFileSize(configPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_FileSizeExceedsLimit));
 
                 var json = SafeFileSystem.SafeReadAllText(configPath);
                 
@@ -107,7 +123,7 @@ public sealed class ConfigLoader : IConfigLoader
                     if (SafeFileSystem.FileExists(schemaPath))
                     {
                         _logger.LogInformation("Validating configuration against schema {SchemaPath}", schemaPath);
-                        var schemaValidationResult = _schemaValidator.ValidateAgainstFile(json, schemaPath);
+                        var schemaValidationResult = await _schemaValidator.ValidateAgainstFileAsync(json, schemaPath);
                         
                         if (!schemaValidationResult.IsValid)
                         {
@@ -213,16 +229,54 @@ public sealed class ConfigLoader : IConfigLoader
 
         /// <summary>
         /// Loads app settings from the specified file path and flattens them into a dictionary.
-        /// Supports both JSON and YAML files (if the YAML loader is provided).
+        /// Supports both JSON (default) and YAML files (if the YAML loader is provided).
+        /// JSON is the default format for app settings files like `appsettings.json`.
         /// Nested JSON objects are flattened with colon-separated keys (e.g., "Logging:LogLevel:Default").
         /// </summary>
-        /// <param name="appSettingsPath">The path to the app settings file (JSON or YAML).</param>
+        /// <param name="appSettingsPath">The path to the app settings file (JSON or YAML). JSON is the default format.</param>
         /// <returns>A dictionary containing flattened app settings with colon-separated keys.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="appSettingsPath"/> is null or empty.</exception>
-        /// <exception cref="FileNotFoundException">Thrown when the app settings file does not exist.</exception>
-        /// <exception cref="ConfigurationException">Thrown when the app settings file is invalid or cannot be deserialized.</exception>
-        /// <exception cref="JsonException">Thrown when the JSON content is invalid.</exception>
-        /// <exception cref="IOException">Thrown when an I/O error occurs while reading the file.</exception>
+        /// <exception cref="System.ArgumentException">Thrown when <paramref name="appSettingsPath"/> is null or empty.</exception>
+        /// <exception cref="System.IO.FileNotFoundException">Thrown when the app settings file does not exist.</exception>
+        /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the app settings file is invalid or cannot be deserialized.</exception>
+        /// <exception cref="System.Text.Json.JsonException">Thrown when the JSON content is invalid.</exception>
+        /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the file.</exception>
+        /// <example>
+        /// <code>
+        /// using Microsoft.Extensions.Logging;
+        /// using Microsoft.Extensions.Logging.Abstractions;
+        /// using Microsoft.Extensions.Options;
+        /// using SGuard.ConfigValidation.Common;
+        /// using SGuard.ConfigValidation.Services;
+        /// 
+        /// var securityOptions = Options.Create(new SecurityOptions());
+        /// var logger = NullLogger&lt;ConfigLoader&gt;.Instance;
+        /// var configLoader = new ConfigLoader(logger, securityOptions);
+        /// 
+        /// try
+        /// {
+        ///     var appSettings = configLoader.LoadAppSettings("appsettings.Production.json");
+        ///     
+        ///     // Access nested values using colon-separated keys
+        ///     if (appSettings.TryGetValue("ConnectionStrings:DefaultConnection", out var connectionString))
+        ///     {
+        ///         Console.WriteLine($"Connection string: {connectionString}");
+        ///     }
+        ///     
+        ///     if (appSettings.TryGetValue("Logging:LogLevel:Default", out var logLevel))
+        ///     {
+        ///         Console.WriteLine($"Log level: {logLevel}");
+        ///     }
+        /// }
+        /// catch (FileNotFoundException ex)
+        /// {
+        ///     Console.WriteLine($"App settings file not found: {ex.FileName}");
+        /// }
+        /// catch (ConfigurationException ex)
+        /// {
+        ///     Console.WriteLine($"Configuration error: {ex.Message}");
+        /// }
+        /// </code>
+        /// </example>
         public Dictionary<string, object> LoadAppSettings(string appSettingsPath)
         {
             if (string.IsNullOrWhiteSpace(appSettingsPath))
@@ -231,12 +285,7 @@ public sealed class ConfigLoader : IConfigLoader
                 throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(appSettingsPath));
             }
 
-            if (!SafeFileSystem.FileExists(appSettingsPath))
-            {
-                var fullPath = Path.GetFullPath(appSettingsPath);
-                _logger.LogError("AppSettings file not found: {AppSettingsPath} (resolved to: {FullPath})", appSettingsPath, fullPath);
-                throw FileNotFoundException(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), appSettingsPath, fullPath);
-            }
+            FileSecurity.EnsureFileExists(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
 
             // Check if a file is YAML
             if (IsYamlFile(appSettingsPath) && _yamlLoader != null)
@@ -247,19 +296,10 @@ public sealed class ConfigLoader : IConfigLoader
             try
             {
                 // Check file size before reading to prevent DoS attacks
-                var fileInfo = new FileInfo(appSettingsPath);
-                if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
-                {
-                    var fileSizeMb = fileInfo.Length / (1024.0 * 1024.0);
-                    var maxSizeMb = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
-                    _logger.LogError("AppSettings file {AppSettingsPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)", 
-                        appSettingsPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
-                    
-                    throw ConfigurationException(nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit), 
-                        appSettingsPath, Path.GetFullPath(appSettingsPath), fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
-                }
+                FileSecurity.ValidateFileSize(appSettingsPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
                 // Get file size to determine if we should use streaming
+                var fileInfo = new FileInfo(appSettingsPath);
                 var useStreaming = fileInfo.Length > SharedConstants.StreamingThresholdBytes;
 
                 if (useStreaming)

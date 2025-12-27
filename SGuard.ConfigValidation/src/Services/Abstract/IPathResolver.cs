@@ -1,4 +1,4 @@
-namespace SGuard.ConfigValidation.Services;
+namespace SGuard.ConfigValidation.Services.Abstract;
 
 /// <summary>
 /// Interface for resolving relative paths to absolute paths.

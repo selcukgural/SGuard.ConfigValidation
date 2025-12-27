@@ -1,7 +1,7 @@
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Results;
 
-namespace SGuard.ConfigValidation.Services;
+namespace SGuard.ConfigValidation.Services.Abstract;
 
 /// <summary>
 /// Interface for validating configuration files against rules.
@@ -15,7 +15,7 @@ public interface IFileValidator
     /// <param name="applicableRules">The list of rules to apply to the file.</param>
     /// <param name="appSettings">The app settings dictionary to validate against.</param>
     /// <returns>A file validation result containing all validation results.</returns>
-    /// <exception cref="ArgumentException">Thrown when filePath is null or empty, or when applicableRules or appSettings are null.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when filePath is null or empty, or when applicableRules or appSettings are null.</exception>
     FileValidationResult ValidateFile(
         string filePath,
         List<Rule> applicableRules,

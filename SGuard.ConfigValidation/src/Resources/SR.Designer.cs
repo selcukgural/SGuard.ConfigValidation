@@ -1112,6 +1112,294 @@ namespace SGuard.ConfigValidation.Resources {
                 return ResourceManager.GetString("JsonSchemaValidator_ValidationError", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'version' is missing or empty at JSON path '$.version'. The 'version' property is required and must contain a non-empty string value..
+        /// </summary>
+        public static string ConfigValidator_VersionRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_VersionRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required array 'environments' is empty at JSON path '$.environments'. At least one environment definition is required. Please add an 'environments' array with at least one environment object containing 'id', 'name', and 'path' properties..
+        /// </summary>
+        public static string ConfigValidator_EnvironmentsEmpty {
+            get {
+                return ResourceManager.GetString("ConfigValidator_EnvironmentsEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.id'. Environment at index {1} must have a non-empty 'id' property..
+        /// </summary>
+        public static string ConfigValidator_EnvironmentIdRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_EnvironmentIdRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'name' is missing or empty at JSON path '{0}.name'{1}. Environment at index {2} must have a non-empty 'name' property..
+        /// </summary>
+        public static string ConfigValidator_EnvironmentNameRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_EnvironmentNameRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'path' is missing or empty at JSON path '{0}.path'{1}. Environment at index {2} must have a non-empty 'path' property pointing to the app settings file..
+        /// </summary>
+        public static string ConfigValidator_EnvironmentPathRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_EnvironmentPathRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Invalid path format at JSON path '{0}.path'{1}. Path value: '{2}'. {3}.
+        /// </summary>
+        public static string ConfigValidator_EnvironmentPathInvalidFormat {
+            get {
+                return ResourceManager.GetString("ConfigValidator_EnvironmentPathInvalidFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Duplicate environment ID '{0}' found at JSON paths: {1}. Environment IDs must be unique. Found {2} environment(s) with the same ID..
+        /// </summary>
+        public static string ConfigValidator_DuplicateEnvironmentId {
+            get {
+                return ResourceManager.GetString("ConfigValidator_DuplicateEnvironmentId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.id'. Rule at index {1} must have a non-empty 'id' property..
+        /// </summary>
+        public static string ConfigValidator_RuleIdRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleIdRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required array 'environments' is empty at JSON path '{0}.environments'{1}. Rule at index {2} must have at least one environment ID in the 'environments' array..
+        /// </summary>
+        public static string ConfigValidator_RuleEnvironmentsEmpty {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleEnvironmentsEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Empty or null environment ID at JSON path '{0}.environments[{1}]'{2}. Environment ID at index {3} in the 'environments' array cannot be null or empty. Value found: {4}..
+        /// </summary>
+        public static string ConfigValidator_RuleEnvironmentIdEmpty {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleEnvironmentIdEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'rule' is missing or null at JSON path '{0}.rule'{1}. Rule at index {2} must have a 'rule' object containing validation conditions..
+        /// </summary>
+        public static string ConfigValidator_RuleDetailRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleDetailRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required 'rules' array is missing or empty. Found {0} environment(s) but 0 rules. At least one rule definition is required. Please add a 'rules' array with at least one rule object..
+        /// </summary>
+        public static string ConfigValidator_RulesRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RulesRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.rule.id'{1}. The 'rule' object must have a non-empty 'id' property..
+        /// </summary>
+        public static string ConfigValidator_RuleDetailIdRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleDetailIdRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Duplicate rule ID '{0}' found at JSON paths: {1}. Rule IDs must be unique. Found {2} rule(s) with the same ID..
+        /// </summary>
+        public static string ConfigValidator_DuplicateRuleId {
+            get {
+                return ResourceManager.GetString("ConfigValidator_DuplicateRuleId", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.rule.id'. Rule ID: '{1}'. The 'rule' object must have a non-empty 'id' property..
+        /// </summary>
+        public static string ConfigValidator_RuleDetailIdRequiredInDetail {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleDetailIdRequiredInDetail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required array 'conditions' is empty at JSON path '{0}.rule.conditions'{1}. Rule ID: '{2}'. At least one condition is required. Please add a 'conditions' array with at least one condition object containing 'key' and 'condition' properties..
+        /// </summary>
+        public static string ConfigValidator_ConditionsEmpty {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ConditionsEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Condition count exceeds security limit at JSON path '{0}.rule.conditions'{1}. Rule ID: '{2}'. Actual count: {3} conditions. Maximum allowed: {4} conditions. Exceeded by: {5} conditions. This may indicate a DoS attack attempt. Please reduce the number of conditions or contact your administrator to adjust the security limits..
+        /// </summary>
+        public static string ConfigValidator_ConditionCountExceedsLimit {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ConditionCountExceedsLimit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'key' is missing or empty at JSON path '{0}.key'. Rule ID: '{1}'. Condition at index {2} must have a non-empty 'key' property specifying the configuration key to validate..
+        /// </summary>
+        public static string ConfigValidator_ConditionKeyRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ConditionKeyRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required array 'condition' is empty at JSON path '{0}.condition'{1}. Rule ID: '{2}'. Condition at index {3} must have at least one validator in the 'condition' array..
+        /// </summary>
+        public static string ConfigValidator_ValidatorsEmpty {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ValidatorsEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Validator count exceeds security limit at JSON path '{0}.condition'{1}. Rule ID: '{2}'. Actual count: {3} validators. Maximum allowed: {4} validators. Exceeded by: {5} validators. This may indicate a DoS attack attempt. Please reduce the number of validators or contact your administrator to adjust the security limits..
+        /// </summary>
+        public static string ConfigValidator_ValidatorCountExceedsLimit {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ValidatorCountExceedsLimit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'validator' is missing or empty at JSON path '{0}.validator'. Rule ID: '{1}'. Validator at index {2} must have a non-empty 'validator' property specifying the validator type..
+        /// </summary>
+        public static string ConfigValidator_ValidatorTypeRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ValidatorTypeRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Unsupported validator type at JSON path '{0}.validator'. Rule ID: '{1}'. Found validator type: '{2}'. Supported validator types: {3}. Please use one of the supported validator types..
+        /// </summary>
+        public static string ConfigValidator_UnsupportedValidatorType {
+            get {
+                return ResourceManager.GetString("ConfigValidator_UnsupportedValidatorType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'message' is missing or empty at JSON path '{0}.message'{1}. Rule ID: '{2}'. Validator at index {3} must have a non-empty 'message' property containing the error message to display when validation fails..
+        /// </summary>
+        public static string ConfigValidator_ValidatorMessageRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ValidatorMessageRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Required property 'value' is missing or null at JSON path '{0}.value'. Rule ID: '{1}'. Validator type: '{2}'. The '{3}' validator requires a 'value' property to specify the expected value for comparison. Please add a 'value' property to this validator..
+        /// </summary>
+        public static string ConfigValidator_ValidatorValueRequired {
+            get {
+                return ResourceManager.GetString("ConfigValidator_ValidatorValueRequired", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configuration validation failed: Rule references non-existent environment ID at JSON path '$.rules[{0}].environments[{1}]'. Rule ID: '{2}'. Referenced environment ID: '{3}'. Available environment IDs: {4}. Please ensure the environment ID exists in the 'environments' array or remove it from the rule's 'environments' list..
+        /// </summary>
+        public static string ConfigValidator_RuleEnvironmentNotFound {
+            get {
+                return ResourceManager.GetString("ConfigValidator_RuleEnvironmentNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path contains null byte (\0), which is not allowed. Path value: '{0}'. Null bytes are not valid in file paths and may indicate a security issue. Please remove any null bytes from the path..
+        /// </summary>
+        public static string ConfigValidator_PathContainsNullByte {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathContainsNullByte", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path contains control characters, which are not allowed. Path value: '{0}'. Control characters found: {1}. Control characters (except tab, newline, carriage return) are not valid in file paths. Please remove any control characters from the path..
+        /// </summary>
+        public static string ConfigValidator_PathContainsControlChars {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathContainsControlChars", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path contains invalid characters for the current platform. Path value: '{0}'. Invalid characters found: {1}. These characters are not allowed in file paths on this operating system. Please remove or replace these characters..
+        /// </summary>
+        public static string ConfigValidator_PathContainsInvalidChars {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathContainsInvalidChars", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path contains too many parent directory references (..). Path value: '{0}'. Found {1} consecutive parent directory references. Maximum allowed: 2 levels. This may indicate a path traversal attempt. Please use absolute paths or paths relative to the configuration file with no more than 2 parent directory references..
+        /// </summary>
+        public static string ConfigValidator_PathTooManyParentRefs {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathTooManyParentRefs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path contains consecutive path separators, which may indicate path manipulation: '{0}'.
+        /// </summary>
+        public static string ConfigValidator_PathConsecutiveSeparators {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathConsecutiveSeparators", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Path is too long ({0} characters). Maximum allowed: {1} characters: '{2}'.
+        /// </summary>
+        public static string ConfigValidator_PathTooLong {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathTooLong", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Absolute path contains parent directory references (..), which may indicate path manipulation: '{0}'.
+        /// </summary>
+        public static string ConfigValidator_PathAbsoluteWithParentRefs {
+            get {
+                return ResourceManager.GetString("ConfigValidator_PathAbsoluteWithParentRefs", resourceCulture);
+            }
+        }
     }
 }
 

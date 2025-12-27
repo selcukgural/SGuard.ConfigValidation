@@ -8,8 +8,8 @@ public static class ValidatorConstants
     /// <summary>
     /// All built-in validator type names.
     /// </summary>
-    public static readonly IReadOnlyList<string> AllValidatorTypes = new[]
-    {
+    public static readonly IReadOnlyList<string> AllValidatorTypes =
+    [
         Required,
         MinLength,
         MaxLength,
@@ -20,7 +20,7 @@ public static class ValidatorConstants
         LessThan,
         LessThanOrEqual,
         In
-    };
+    ];
 
     /// <summary>
     /// Validator types that require a value to be specified.

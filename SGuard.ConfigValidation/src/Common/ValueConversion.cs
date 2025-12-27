@@ -61,7 +61,7 @@ public static class ValueConversion
     /// - Zero: value equals conditionValue
     /// - Greater than zero: value is greater than conditionValue
     /// </returns>
-    /// <exception cref="ArgumentException">Thrown when values cannot be compared.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when values cannot be compared.</exception>
     public static int CompareValues(object value, object? conditionValue)
     {
         if (conditionValue == null)

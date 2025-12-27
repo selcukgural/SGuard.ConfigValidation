@@ -27,7 +27,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironment_With_ValidConfig_Should_ReturnSuccess()
+    public async Task ValidateEnvironment_With_ValidConfig_Should_ReturnSuccess()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -68,7 +68,7 @@ public sealed class RuleEngineTests : IDisposable
         
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var result = _ruleEngine.ValidateEnvironment(configAbsolutePath, "dev");
+        var result = await _ruleEngine.ValidateEnvironmentAsync(configAbsolutePath, "dev");
 
         // Assert
         result.Should().NotBeNull();
@@ -79,7 +79,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironment_With_EnvironmentNotFound_Should_ReturnError()
+    public async Task ValidateEnvironment_With_EnvironmentNotFound_Should_ReturnError()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -114,7 +114,7 @@ public sealed class RuleEngineTests : IDisposable
 }");
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var result = _ruleEngine.ValidateEnvironment(configAbsolutePath, "nonexistent");
+        var result = await _ruleEngine.ValidateEnvironmentAsync(configAbsolutePath, "nonexistent");
 
         // Assert
         result.Should().NotBeNull();
@@ -123,7 +123,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironment_With_FileNotFound_Should_ReturnError()
+    public async Task ValidateEnvironment_With_FileNotFound_Should_ReturnError()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -158,7 +158,7 @@ public sealed class RuleEngineTests : IDisposable
 }");
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var result = _ruleEngine.ValidateEnvironment(configAbsolutePath, "dev");
+        var result = await _ruleEngine.ValidateEnvironmentAsync(configAbsolutePath, "dev");
 
         // Assert
         result.Should().NotBeNull();
@@ -167,7 +167,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateAllEnvironments_With_ValidConfig_Should_ReturnSuccess()
+    public async Task ValidateAllEnvironments_With_ValidConfig_Should_ReturnSuccess()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -217,7 +217,7 @@ public sealed class RuleEngineTests : IDisposable
 }");
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var result = _ruleEngine.ValidateAllEnvironments(configAbsolutePath);
+        var result = await _ruleEngine.ValidateAllEnvironmentsAsync(configAbsolutePath);
 
         // Assert
         result.Should().NotBeNull();
@@ -227,7 +227,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironmentFromJson_With_ValidJson_Should_ReturnSuccess()
+    public async Task ValidateEnvironmentFromJson_With_ValidJson_Should_ReturnSuccess()
     {
         // Arrange
         var configJson = @"{
@@ -262,7 +262,7 @@ public sealed class RuleEngineTests : IDisposable
 }";
 
         // Act
-        var result = _ruleEngine.ValidateEnvironmentFromJson(configJson, "dev");
+        var result = await _ruleEngine.ValidateEnvironmentFromJsonAsync(configJson, "dev");
 
         // Assert
         result.Should().NotBeNull();
@@ -273,7 +273,7 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateAllEnvironmentsFromJson_With_ValidJson_Should_ReturnSuccess()
+    public async Task ValidateAllEnvironmentsFromJson_With_ValidJson_Should_ReturnSuccess()
     {
         // Arrange
         var configJson = @"{
@@ -313,7 +313,7 @@ public sealed class RuleEngineTests : IDisposable
 }";
 
         // Act
-        var result = _ruleEngine.ValidateAllEnvironmentsFromJson(configJson);
+        var result = await _ruleEngine.ValidateAllEnvironmentsFromJsonAsync(configJson);
 
         // Assert
         result.Should().NotBeNull();
@@ -322,10 +322,10 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironment_With_NullConfigPath_Should_ReturnError()
+    public async Task ValidateEnvironment_With_NullConfigPath_Should_ReturnError()
     {
         // Act
-        var result = _ruleEngine.ValidateEnvironment(null!, "dev");
+        var result = await _ruleEngine.ValidateEnvironmentAsync(null!, "dev");
 
         // Assert
         result.Should().NotBeNull();
@@ -334,10 +334,10 @@ public sealed class RuleEngineTests : IDisposable
     }
 
     [Fact]
-    public void ValidateEnvironment_With_NullEnvironmentId_Should_ReturnError()
+    public async Task ValidateEnvironment_With_NullEnvironmentId_Should_ReturnError()
     {
         // Act
-        var result = _ruleEngine.ValidateEnvironment("sguard.json", null!);
+        var result = await _ruleEngine.ValidateEnvironmentAsync("sguard.json", null!);
 
         // Assert
         result.Should().NotBeNull();

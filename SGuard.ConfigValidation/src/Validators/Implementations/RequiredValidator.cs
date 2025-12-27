@@ -1,5 +1,6 @@
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Results;
 using SGuard.ConfigValidation.Validators.Base;
 
 namespace SGuard.ConfigValidation.Validators;

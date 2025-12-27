@@ -23,7 +23,7 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_ValidFile_Should_Return_Config()
+    public async Task LoadConfig_With_ValidFile_Should_Return_Config()
     {
         // Arrange
         var configPath = CreateTestConfigFile("valid-sguard.json", @"{
@@ -59,7 +59,7 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
 
         // Act
-        var config = _loader.LoadConfig(configPath);
+        var config = await _loader.LoadConfigAsync(configPath);
 
         // Assert
         config.Should().NotBeNull();
@@ -70,13 +70,13 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_NonExistentFile_Should_Throw_FileNotFoundException()
+    public async Task LoadConfig_With_NonExistentFile_Should_Throw_FileNotFoundException()
     {
         // Arrange
         var nonExistentPath = Path.Combine(_testDirectory, "nonexistent.json");
 
         // Act & Assert
-        var exception = Assert.Throws<FileNotFoundException>(() => _loader.LoadConfig(nonExistentPath));
+        var exception = await Assert.ThrowsAsync<FileNotFoundException>(async () => await _loader.LoadConfigAsync(nonExistentPath));
         exception.Message.Should().Contain("nonexistent.json");
     }
 
@@ -108,7 +108,7 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_SchemaValidation_And_ValidConfig_Should_Return_Config()
+    public async Task LoadConfig_With_SchemaValidation_And_ValidConfig_Should_Return_Config()
     {
         // Arrange
         var schemaPath = CreateTestConfigFile("sguard.schema.json", @"{
@@ -157,7 +157,7 @@ public sealed class ConfigLoaderTests : IDisposable
         var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act
-        var config = loader.LoadConfig(configPath);
+        var config = await loader.LoadConfigAsync(configPath);
 
         // Assert
         config.Should().NotBeNull();
@@ -165,7 +165,7 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_SchemaValidation_And_InvalidConfig_Should_Throw_ConfigurationException()
+    public async Task LoadConfig_With_SchemaValidation_And_InvalidConfig_Should_Throw_ConfigurationException()
     {
         // Arrange
         var schemaPath = CreateTestConfigFile("sguard.schema.json", @"{
@@ -188,12 +188,12 @@ public sealed class ConfigLoaderTests : IDisposable
         var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act & Assert
-        var exception = Assert.Throws<ConfigurationException>(() => loader.LoadConfig(configPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await loader.LoadConfigAsync(configPath));
         exception.Message.ToLowerInvariant().Should().Contain("does not match the expected schema", "Exception message should indicate schema validation failure");
     }
 
     [Fact]
-    public void LoadConfig_With_SchemaValidation_And_NoSchemaFile_Should_Load_WithoutValidation()
+    public async Task LoadConfig_With_SchemaValidation_And_NoSchemaFile_Should_Load_WithoutValidation()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -213,13 +213,13 @@ public sealed class ConfigLoaderTests : IDisposable
         var loader = new ConfigLoader(logger, securityOptions, schemaValidator);
 
         // Act & Assert - Should throw ConfigurationException when no rules are defined
-        var exception = Assert.Throws<ConfigurationException>(() => loader.LoadConfig(configPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await loader.LoadConfigAsync(configPath));
         exception.Message.Should().Contain("No rules defined", "Exception message should indicate no rules found");
         exception.Message.Should().Contain("0 rules", "Exception message should mention zero rules");
     }
     
     [Fact]
-    public void LoadConfig_With_NoRules_Should_Throw_ConfigurationException()
+    public async Task LoadConfig_With_NoRules_Should_Throw_ConfigurationException()
     {
         // Arrange
         var configPath = CreateTestConfigFile("sguard.json", @"{
@@ -235,7 +235,7 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
 
         // Act & Assert
-        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(configPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await _loader.LoadConfigAsync(configPath));
         exception.Message.Should().Contain("No rules defined", "Exception message should indicate no rules found");
         exception.Message.Should().Contain("0 rules", "Exception message should mention zero rules");
         exception.Message.Should().Contain("1 environment", "Exception message should mention environment count");
@@ -249,7 +249,7 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_YamlFile_Should_UseYamlLoader()
+    public async Task LoadConfig_With_YamlFile_Should_UseYamlLoader()
     {
         // Arrange
         var yamlPath = CreateTestConfigFile("sguard.yaml", @"
@@ -277,7 +277,7 @@ rules:
         var loader = new ConfigLoader(logger, securityOptions, yamlLoader: yamlLoader);
 
         // Act
-        var config = loader.LoadConfig(yamlPath);
+        var config = await loader.LoadConfigAsync(yamlPath);
 
         // Assert
         config.Should().NotBeNull();

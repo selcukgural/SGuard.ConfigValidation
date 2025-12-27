@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 
@@ -15,6 +17,12 @@ public sealed class FileValidator : IFileValidator
     private readonly IValidatorFactory _validatorFactory;
     private readonly ILogger<FileValidator> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the FileValidator class.
+    /// </summary>
+    /// <param name="validatorFactory">The validator factory used to create validators for validation rules.</param>
+    /// <param name="logger">Logger instance for logging validation operations.</param>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="validatorFactory"/> or <paramref name="logger"/> is null.</exception>
     public FileValidator(IValidatorFactory validatorFactory, ILogger<FileValidator> logger)
     {
         System.ArgumentNullException.ThrowIfNull(validatorFactory);
@@ -29,10 +37,72 @@ public sealed class FileValidator : IFileValidator
     /// <param name="applicableRules">The list of rules to apply to the file.</param>
     /// <param name="appSettings">The app settings dictionary to validate against.</param>
     /// <returns>A <see cref="FileValidationResult"/> containing all validation results for the file.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="applicableRules"/> or <paramref name="appSettings"/> is null.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the file does not exist.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when <paramref name="filePath"/> is null or empty.</exception>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="applicableRules"/> or <paramref name="appSettings"/> is null.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the file does not exist.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the file cannot be loaded or parsed.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using SGuard.ConfigValidation.Models;
+    /// using SGuard.ConfigValidation.Services;
+    /// using SGuard.ConfigValidation.Validators;
+    /// 
+    /// var validatorFactory = new ValidatorFactory(NullLogger&lt;ValidatorFactory&gt;.Instance);
+    /// var fileValidator = new FileValidator(validatorFactory, NullLogger&lt;FileValidator&gt;.Instance);
+    /// 
+    /// var rules = new List&lt;Rule&gt;
+    /// {
+    ///     new Rule
+    ///     {
+    ///         Id = "connection-string-rule",
+    ///         Environments = new List&lt;string&gt; { "prod" },
+    ///         RuleDetail = new RuleDetail
+    ///         {
+    ///             Id = "connection-string-detail",
+    ///             Conditions = new List&lt;Condition&gt;
+    ///             {
+    ///                 new Condition
+    ///                 {
+    ///                     Key = "ConnectionStrings:DefaultConnection",
+    ///                     Validators = new List&lt;ValidatorCondition&gt;
+    ///                     {
+    ///                         new ValidatorCondition
+    ///                         {
+    ///                             Validator = "required",
+    ///                             Message = "Connection string is required"
+    ///                         }
+    ///                     }
+    ///                 }
+    ///             }
+    ///         }
+    ///     }
+    /// };
+    /// 
+    /// var appSettings = new Dictionary&lt;string, object&gt;
+    /// {
+    ///     { "ConnectionStrings:DefaultConnection", "Server=localhost;Database=MyDb" }
+    /// };
+    /// 
+    /// var result = fileValidator.ValidateFile("appsettings.Production.json", rules, appSettings);
+    /// 
+    /// if (result.IsValid)
+    /// {
+    ///     Console.WriteLine("File validation passed!");
+    /// }
+    /// else
+    /// {
+    ///     foreach (var validationResult in result.Results)
+    ///     {
+    ///         foreach (var error in validationResult.Errors)
+    ///         {
+    ///             Console.WriteLine($"  - {error.Key}: {error.Message}");
+    ///         }
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
     public FileValidationResult ValidateFile(
         string filePath, 
         List<Rule> applicableRules,
@@ -163,7 +233,7 @@ public sealed class FileValidator : IFileValidator
         }
 
         // Get the value from appsettings
-        var hasValue = appSettings.TryGetValue(condition.Key, out var value);
+        appSettings.TryGetValue(condition.Key, out var value);
 
         foreach (var validatorCondition in condition.Validators)
         {
@@ -183,7 +253,7 @@ public sealed class FileValidator : IFileValidator
             {
                 var validator = _validatorFactory.GetValidator(validatorCondition.Validator);
                 
-                // Type-based dispatch: Check if value type is supported by validator
+                // Type-based dispatch: Check if the validator supports a value type
                 var valueTyped = TypedValue.From(value);
                 if (!validator.SupportedValueTypes.Contains(valueTyped.Type) && valueTyped.Type != Common.ValueType.Unknown)
                 {

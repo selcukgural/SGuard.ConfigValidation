@@ -1,4 +1,4 @@
-namespace SGuard.ConfigValidation.Common;
+namespace SGuard.ConfigValidation.Results;
 
 /// <summary>
 /// Represents the validation result for a single configuration file.

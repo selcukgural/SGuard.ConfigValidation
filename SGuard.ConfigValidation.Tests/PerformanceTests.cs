@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using Xunit.Abstractions;
@@ -123,27 +124,24 @@ public sealed class PerformanceTests : IDisposable
             ["ApiKey"] = "test-key-12345"
         };
 
-        var rules = new List<Models.Rule>();
+        var rules = new List<Rule>();
         for (int i = 0; i < 1000; i++)
         {
-            rules.Add(new Models.Rule
+            rules.Add(new Rule
             {
                 Id = $"rule_{i}",
-                Environments = new List<string> { "Development" },
-                RuleDetail = new Models.RuleDetail
+                Environments = ["Development"],
+                RuleDetail = new RuleDetail
                 {
                     Id = $"rule_detail_{i}",
-                    Conditions = new List<Models.Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<Models.ValidatorCondition>
-                            {
-                                new() { Validator = "required", Message = "Connection string is required" }
-                            }
+                            Validators = [new ValidatorCondition { Validator = "required", Message = "Connection string is required" }]
                         }
-                    }
+                    ]
                 }
             });
         }
@@ -162,7 +160,7 @@ public sealed class PerformanceTests : IDisposable
     }
 
     [Fact]
-    public void ConfigLoader_LoadConfig_With_ManyEnvironments_Should_Be_Fast()
+    public async Task ConfigLoader_LoadConfig_With_ManyEnvironments_Should_Be_Fast()
     {
         // Arrange
         var configJson = GenerateConfigWithManyEnvironments(100);
@@ -175,7 +173,7 @@ public sealed class PerformanceTests : IDisposable
 
         // Act
         var stopwatch = Stopwatch.StartNew();
-        var result = configLoader.LoadConfig(filePath);
+        var result = await configLoader.LoadConfigAsync(filePath);
         stopwatch.Stop();
 
         // Assert

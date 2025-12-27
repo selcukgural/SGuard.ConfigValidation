@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Hooks;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 
@@ -25,9 +26,13 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         var fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
         var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
+        var hookFactoryLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var hookFactory = new HookFactory(hookFactoryLoggerFactory);
+        var hookExecutorLogger = NullLogger<HookExecutor>.Instance;
+        var hookExecutor = new HookExecutor(hookFactory, hookExecutorLogger);
         var cliLogger = NullLogger<SGuardCli>.Instance;
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _cli = new SGuardCli(ruleEngine, cliLogger, loggerFactory);
+        _cli = new SGuardCli(ruleEngine, configLoader, hookExecutor, cliLogger, loggerFactory);
         _testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguardcli-test");
     }
 
@@ -73,7 +78,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         
         // Act - use absolute path to avoid directory change issues
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var exitCode = await _cli.RunAsync(new[] { "validate", "--config", configAbsolutePath, "--env", "dev" });
+        var exitCode = await _cli.RunAsync(["validate", "--config", configAbsolutePath, "--env", "dev"]);
 
         // Assert
         exitCode.Should().Be(ExitCode.Success);
@@ -97,7 +102,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         
         // Act
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var exitCode = await _cli.RunAsync(new[] { "validate", "--config", configAbsolutePath, "--env", "dev", "--all" });
+        var exitCode = await _cli.RunAsync(["validate", "--config", configAbsolutePath, "--env", "dev", "--all"]);
 
         // Assert
         exitCode.Should().Be(ExitCode.SystemError);
@@ -121,7 +126,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         
         // Act
         var configAbsolutePath = Path.Combine(_testDirectory, "sguard.json");
-        var exitCode = await _cli.RunAsync(new[] { "validate", "--config", configAbsolutePath, "--output", "invalid" });
+        var exitCode = await _cli.RunAsync(["validate", "--config", configAbsolutePath, "--output", "invalid"]);
 
         // Assert - System.CommandLine validator should catch this and return non-zero exit code
         exitCode.Should().NotBe(ExitCode.Success, "Invalid output format should result in non-zero exit code");

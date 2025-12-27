@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Results;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 
@@ -58,27 +59,24 @@ public class BenchmarkTests
         };
 
         // Setup rules
-        _rules = new List<Rule>();
+        _rules = [];
         for (int i = 0; i < 100; i++)
         {
             _rules.Add(new Rule
             {
                 Id = $"rule_{i}",
-                Environments = new List<string> { "Development" },
+                Environments = ["Development"],
                 RuleDetail = new RuleDetail
                 {
                     Id = $"rule_detail_{i}",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new() { Validator = "required", Message = "Connection string is required" }
-                            }
+                            Validators = [new ValidatorCondition { Validator = "required", Message = "Connection string is required" }]
                         }
-                    }
+                    ]
                 }
             });
         }

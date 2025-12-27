@@ -59,7 +59,7 @@ public static class PathSecurity
     /// </summary>
     /// <param name="resolvedPath">The absolute resolved path to validate.</param>
     /// <param name="basePath">The base file path used for resolution.</param>
-    /// <exception cref="UnauthorizedAccessException">Thrown when the resolved path is outside the base directory.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when the resolved path is outside the base directory.</exception>
     public static void ValidateResolvedPath(string resolvedPath, string basePath)
     {
         if (string.IsNullOrWhiteSpace(resolvedPath) || string.IsNullOrWhiteSpace(basePath))
@@ -223,7 +223,7 @@ public static class PathSecurity
     /// </summary>
     /// <param name="path">The path to validate.</param>
     /// <param name="basePath">The base path used for validation.</param>
-    /// <exception cref="UnauthorizedAccessException">Thrown when the path is a symlink pointing outside the base directory.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when the path is a symlink pointing outside the base directory.</exception>
     public static void ValidateSymlink(string path, string basePath)
     {
         if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(basePath))

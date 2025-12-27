@@ -5,6 +5,7 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Services.Abstract;
 using static SGuard.ConfigValidation.Common.Throw;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -26,7 +27,7 @@ public sealed class YamlLoader : IYamlLoader
     /// </summary>
     /// <param name="logger">Logger instance for logging YAML loading operations.</param>
     /// <param name="securityOptions">Security options configured via IOptions pattern.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="logger"/> or <paramref name="securityOptions"/> is null.</exception>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="logger"/> or <paramref name="securityOptions"/> is null.</exception>
     public YamlLoader(ILogger<YamlLoader> logger, IOptions<SecurityOptions> securityOptions)
     {
         System.ArgumentNullException.ThrowIfNull(logger);
@@ -45,12 +46,40 @@ public sealed class YamlLoader : IYamlLoader
     /// </summary>
     /// <param name="yamlPath">The path to the YAML configuration file.</param>
     /// <returns>The loaded <see cref="SGuardConfig"/> instance.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the YAML file is empty, invalid, or cannot be deserialized.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is empty, invalid, or cannot be deserialized.</exception>
     /// <exception cref="YamlDotNet.Core.YamlException">Thrown when YAML parsing fails.</exception>
-    /// <exception cref="JsonException">Thrown when JSON conversion or deserialization fails.</exception>
-    /// <exception cref="IOException">Thrown when an I/O error occurs while reading the file.</exception>
+    /// <exception cref="System.Text.Json.JsonException">Thrown when JSON conversion or deserialization fails.</exception>
+    /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the file.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using Microsoft.Extensions.Options;
+    /// using SGuard.ConfigValidation.Common;
+    /// using SGuard.ConfigValidation.Services;
+    /// 
+    /// var securityOptions = Options.Create(new SecurityOptions());
+    /// var logger = NullLogger&lt;YamlLoader&gt;.Instance;
+    /// var yamlLoader = new YamlLoader(logger, securityOptions);
+    /// 
+    /// try
+    /// {
+    ///     var config = yamlLoader.LoadConfig("sguard.yaml");
+    ///     Console.WriteLine($"Loaded {config.Environments.Count} environment(s) from YAML");
+    ///     Console.WriteLine($"Loaded {config.Rules.Count} rule(s) from YAML");
+    /// }
+    /// catch (FileNotFoundException ex)
+    /// {
+    ///     Console.WriteLine($"YAML configuration file not found: {ex.FileName}");
+    /// }
+    /// catch (ConfigurationException ex)
+    /// {
+    ///     Console.WriteLine($"YAML configuration error: {ex.Message}");
+    /// }
+    /// </code>
+    /// </example>
     public SGuardConfig LoadConfig(string yamlPath)
     {
         if (string.IsNullOrWhiteSpace(yamlPath))
@@ -59,31 +88,12 @@ public sealed class YamlLoader : IYamlLoader
             throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(yamlPath));
         }
 
-        if (!SafeFileSystem.FileExists(yamlPath))
-        {
-            var fullPath = Path.GetFullPath(yamlPath);
-
-            _logger.LogError("YAML configuration file not found: {YamlPath} (resolved to: {FullPath})", yamlPath, fullPath);
-            throw FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), yamlPath, fullPath);
-        }
+        FileSecurity.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), _logger);
 
         try
         {
             // Check file size before reading to prevent DoS attacks
-            var fileInfo = new FileInfo(yamlPath);
-
-            if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
-            {
-                var fileSizeMb = fileInfo.Length / (1024.0 * 1024.0);
-                var maxSizeMb = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
-
-                _logger.LogError(
-                    "YAML configuration file {YamlPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)",
-                    yamlPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
-
-                throw ConfigurationException(nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
-                                             fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
-            }
+            FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit));
 
             var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
 
@@ -128,9 +138,13 @@ public sealed class YamlLoader : IYamlLoader
                                              config.Environments.Count - _securityOptions.MaxEnvironmentsCount);
             }
 
-            if (config.Rules == null)
+            if (config.Rules.Count == 0)
             {
-                config.Rules = [];
+                _logger.LogError("YAML configuration file {YamlPath} contains no rules. Found {EnvironmentCount} environment(s)", yamlPath,
+                                 config.Environments.Count);
+                
+                throw ConfigurationException(nameof(SR.ConfigurationException_NoRules), 
+                    yamlPath, Path.GetFullPath(yamlPath), config.Environments.Count);
             }
             else
             {
@@ -206,13 +220,50 @@ public sealed class YamlLoader : IYamlLoader
     /// </summary>
     /// <param name="yamlPath">The path to the YAML app settings file.</param>
     /// <returns>A dictionary containing flattened app settings with colon-separated keys (e.g., "Logging:LogLevel:Default").</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when the YAML file does not exist.</exception>
-    /// <exception cref="ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
+    /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
     /// <exception cref="YamlDotNet.Core.YamlException">Thrown when YAML parsing fails.</exception>
-    /// <exception cref="JsonException">Thrown when JSON conversion or parsing fails.</exception>
-    /// <exception cref="IOException">Thrown when an I/O error occurs while reading the file.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+    /// <exception cref="System.Text.Json.JsonException">Thrown when JSON conversion or parsing fails.</exception>
+    /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the file.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when access to the file is denied.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using Microsoft.Extensions.Options;
+    /// using SGuard.ConfigValidation.Common;
+    /// using SGuard.ConfigValidation.Services;
+    /// 
+    /// var securityOptions = Options.Create(new SecurityOptions());
+    /// var logger = NullLogger&lt;YamlLoader&gt;.Instance;
+    /// var yamlLoader = new YamlLoader(logger, securityOptions);
+    /// 
+    /// try
+    /// {
+    ///     var appSettings = yamlLoader.LoadAppSettings("appsettings.Production.yaml");
+    ///     
+    ///     // Access nested values using colon-separated keys
+    ///     if (appSettings.TryGetValue("ConnectionStrings:DefaultConnection", out var connectionString))
+    ///     {
+    ///         Console.WriteLine($"Connection string: {connectionString}");
+    ///     }
+    ///     
+    ///     if (appSettings.TryGetValue("Logging:LogLevel:Default", out var logLevel))
+    ///     {
+    ///         Console.WriteLine($"Log level: {logLevel}");
+    ///     }
+    /// }
+    /// catch (FileNotFoundException ex)
+    /// {
+    ///     Console.WriteLine($"YAML app settings file not found: {ex.FileName}");
+    /// }
+    /// catch (ConfigurationException ex)
+    /// {
+    ///     Console.WriteLine($"YAML configuration error: {ex.Message}");
+    /// }
+    /// </code>
+    /// </example>
     public Dictionary<string, object> LoadAppSettings(string yamlPath)
     {
         if (string.IsNullOrWhiteSpace(yamlPath))
@@ -221,30 +272,12 @@ public sealed class YamlLoader : IYamlLoader
             throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(yamlPath));
         }
 
-        if (!SafeFileSystem.FileExists(yamlPath))
-        {
-            var fullPath = Path.GetFullPath(yamlPath);
-            _logger.LogError("YAML app settings file not found: {YamlPath} (resolved to: {FullPath})", yamlPath, fullPath);
-            throw FileNotFoundException(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), yamlPath, fullPath);
-        }
+        FileSecurity.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
 
         try
         {
             // Check file size before reading to prevent DoS attacks
-            var fileInfo = new FileInfo(yamlPath);
-
-            if (fileInfo.Length > _securityOptions.MaxFileSizeBytes)
-            {
-                var fileSizeMb = fileInfo.Length / (1024.0 * 1024.0);
-                var maxSizeMb = _securityOptions.MaxFileSizeBytes / (1024.0 * 1024.0);
-
-                _logger.LogError(
-                    "YAML app settings file {YamlPath} exceeds maximum size limit. Size: {FileSize} bytes ({FileSizeMB:F2} MB), Limit: {MaxSize} bytes ({MaxSizeMB:F2} MB)",
-                    yamlPath, fileInfo.Length, fileSizeMb, _securityOptions.MaxFileSizeBytes, maxSizeMb);
-
-                throw ConfigurationException(nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
-                                             fileSizeMb, fileInfo.Length, maxSizeMb, _securityOptions.MaxFileSizeBytes, fileSizeMb - maxSizeMb);
-            }
+            FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
             var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
 

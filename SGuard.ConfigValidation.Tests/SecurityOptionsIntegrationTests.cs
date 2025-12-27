@@ -20,7 +20,7 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxFileSizeLimit()
+    public async Task ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxFileSizeLimit()
     {
         // Arrange
         var securityOptions = Options.Create(new SecurityOptions
@@ -36,13 +36,13 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         File.WriteAllText(configPath, $@"{{""version"": ""1"", ""environments"": [], ""rules"": [], ""extra"": ""{largeContent}""}}");
 
         // Act & Assert
-        var action = () => loader.LoadConfig(configPath);
-        action.Should().Throw<ConfigurationException>()
+        var action = async () => await loader.LoadConfigAsync(configPath);
+        await action.Should().ThrowAsync<ConfigurationException>()
             .WithMessage("*exceeds security limit*");
     }
 
     [Fact]
-    public void ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxEnvironmentsLimit()
+    public async Task ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxEnvironmentsLimit()
     {
         // Arrange
         var securityOptions = Options.Create(new SecurityOptions
@@ -65,13 +65,13 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         File.WriteAllText(configPath, configJson);
 
         // Act & Assert
-        var action = () => loader.LoadConfig(configPath);
-        action.Should().Throw<ConfigurationException>()
+        var action = async () => await loader.LoadConfigAsync(configPath);
+        await action.Should().ThrowAsync<ConfigurationException>()
             .WithMessage("*exceeds security limit*");
     }
 
     [Fact]
-    public void ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxRulesLimit()
+    public async Task ConfigLoader_With_CustomSecurityOptions_Should_Enforce_MaxRulesLimit()
     {
         // Arrange
         var securityOptions = Options.Create(new SecurityOptions
@@ -104,8 +104,8 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         File.WriteAllText(configPath, configJson);
 
         // Act & Assert
-        var action = () => loader.LoadConfig(configPath);
-        action.Should().Throw<ConfigurationException>()
+        var action = async () => await loader.LoadConfigAsync(configPath);
+        await action.Should().ThrowAsync<ConfigurationException>()
             .WithMessage("*exceeds security limit*");
     }
 
@@ -132,28 +132,34 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "rule-detail-1",
-                        Conditions = new List<Condition>
-                        {
-                            new() { Key = "Test:Key1", Validators = new List<ValidatorCondition> { new() { Validator = "required", Message = "Test" } } },
-                            new() { Key = "Test:Key2", Validators = new List<ValidatorCondition> { new() { Validator = "required", Message = "Test" } } },
-                            new() { Key = "Test:Key3", Validators = new List<ValidatorCondition> { new() { Validator = "required", Message = "Test" } } }
-                        }
+                        Conditions =
+                        [
+                            new Condition
+                            {
+                                Key = "Test:Key1", Validators = [new ValidatorCondition { Validator = "required", Message = "Test" }]
+                            },
+                            new Condition
+                            {
+                                Key = "Test:Key2", Validators = [new ValidatorCondition { Validator = "required", Message = "Test" }]
+                            },
+                            new Condition
+                            {
+                                Key = "Test:Key3", Validators = [new ValidatorCondition { Validator = "required", Message = "Test" }]
+                            }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act
@@ -179,35 +185,32 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         var config = new SGuardConfig
         {
             Version = "1",
-            Environments = new List<Environment>
-            {
-                new() { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }
-            },
-            Rules = new List<Rule>
-            {
-                new()
+            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
+            Rules =
+            [
+                new Rule
                 {
                     Id = "rule1",
-                    Environments = new List<string> { "dev" },
+                    Environments = ["dev"],
                     RuleDetail = new RuleDetail
                     {
                         Id = "rule-detail-1",
-                        Conditions = new List<Condition>
-                        {
-                            new()
+                        Conditions =
+                        [
+                            new Condition
                             {
                                 Key = "Test:Key1",
-                                Validators = new List<ValidatorCondition>
-                                {
-                                    new() { Validator = "required", Message = "Test" },
-                                    new() { Validator = "min_len", Value = "5", Message = "Test" },
-                                    new() { Validator = "max_len", Value = "10", Message = "Test" }
-                                }
+                                Validators =
+                                [
+                                    new ValidatorCondition { Validator = "required", Message = "Test" },
+                                    new ValidatorCondition { Validator = "min_len", Value = "5", Message = "Test" },
+                                    new ValidatorCondition { Validator = "max_len", Value = "10", Message = "Test" }
+                                ]
                             }
-                        }
+                        ]
                     }
                 }
-            }
+            ]
         };
 
         // Act

@@ -74,7 +74,7 @@ public static class SafeFileSystem
     /// </summary>
     /// <param name="prefix">Optional prefix for the directory name.</param>
     /// <returns>The path to the created directory.</returns>
-    /// <exception cref="UnauthorizedAccessException">Thrown when unable to create a directory due to permissions.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when unable to create a directory due to permissions.</exception>
     public static string CreateSafeTempDirectory(string? prefix = null)
     {
         var baseTempDir = GetSafeTempDirectory();
@@ -121,8 +121,8 @@ public static class SafeFileSystem
     /// <param name="filePath">The path to the file.</param>
     /// <param name="content">The content to write.</param>
     /// <param name="basePath">Optional base path for path traversal validation. If provided, the file path must be within the base directory.</param>
-    /// <exception cref="ArgumentException">Thrown when filePath is null or empty.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when unable to write due to permissions, path traversal detected, or symlink attack detected.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when filePath is null or empty.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when unable to write due to permissions, path traversal detected, or symlink attack detected.</exception>
     public static void SafeWriteAllText(string filePath, string content, string? basePath = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -322,9 +322,9 @@ public static class SafeFileSystem
     /// <param name="filePath">The path to the file.</param>
     /// <param name="basePath">Optional base path for path traversal validation. If provided, the file path must be within the base directory.</param>
     /// <returns>The content of the file.</returns>
-    /// <exception cref="ArgumentException">Thrown when filePath is null or empty.</exception>
-    /// <exception cref="FileNotFoundException">Thrown when a file does not exist.</exception>
-    /// <exception cref="UnauthorizedAccessException">Thrown when unable to read due to permissions, path traversal detected, or symlink attack detected.</exception>
+    /// <exception cref="System.ArgumentException">Thrown when filePath is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when a file does not exist.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when unable to read due to permissions, path traversal detected, or symlink attack detected.</exception>
     public static string SafeReadAllText(string filePath, string? basePath = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -384,7 +384,7 @@ public static class SafeFileSystem
     /// <param name="filePath">The path to the file.</param>
     /// <param name="basePath">Optional base path for path traversal validation. If provided, the file path must be within the base directory.</param>
     /// <returns>True if a file exists, false otherwise.</returns>
-    /// <exception cref="UnauthorizedAccessException">Thrown when path traversal is detected or symlink attack is detected.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when path traversal is detected or symlink attack is detected.</exception>
     public static bool FileExists(string filePath, string? basePath = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))

@@ -436,5 +436,103 @@
   <data name="JsonSchemaValidator_ValidationError" xml:space="preserve">
     <value>Schema validation failed: Validation error at JSON path '{0}'. Property path: '{1}'. Error kind: {2}. Error details: {3}. Please review the schema requirements and fix the JSON document accordingly.</value>
   </data>
+  
+  <!-- ConfigValidator Messages -->
+  <data name="ConfigValidator_VersionRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'version' is missing or empty at JSON path '$.version'. The 'version' property is required and must contain a non-empty string value.</value>
+  </data>
+  <data name="ConfigValidator_EnvironmentsEmpty" xml:space="preserve">
+    <value>Configuration validation failed: Required array 'environments' is empty at JSON path '$.environments'. At least one environment definition is required. Please add an 'environments' array with at least one environment object containing 'id', 'name', and 'path' properties.</value>
+  </data>
+  <data name="ConfigValidator_EnvironmentIdRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.id'. Environment at index {1} must have a non-empty 'id' property.</value>
+  </data>
+  <data name="ConfigValidator_EnvironmentNameRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'name' is missing or empty at JSON path '{0}.name'{1}. Environment at index {2} must have a non-empty 'name' property.</value>
+  </data>
+  <data name="ConfigValidator_EnvironmentPathRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'path' is missing or empty at JSON path '{0}.path'{1}. Environment at index {2} must have a non-empty 'path' property pointing to the app settings file.</value>
+  </data>
+  <data name="ConfigValidator_EnvironmentPathInvalidFormat" xml:space="preserve">
+    <value>Configuration validation failed: Invalid path format at JSON path '{0}.path'{1}. Path value: '{2}'. {3}</value>
+  </data>
+  <data name="ConfigValidator_DuplicateEnvironmentId" xml:space="preserve">
+    <value>Configuration validation failed: Duplicate environment ID '{0}' found at JSON paths: {1}. Environment IDs must be unique. Found {2} environment(s) with the same ID.</value>
+  </data>
+  <data name="ConfigValidator_RuleIdRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.id'. Rule at index {1} must have a non-empty 'id' property.</value>
+  </data>
+  <data name="ConfigValidator_RuleEnvironmentsEmpty" xml:space="preserve">
+    <value>Configuration validation failed: Required array 'environments' is empty at JSON path '{0}.environments'{1}. Rule at index {2} must have at least one environment ID in the 'environments' array.</value>
+  </data>
+  <data name="ConfigValidator_RuleEnvironmentIdEmpty" xml:space="preserve">
+    <value>Configuration validation failed: Empty or null environment ID at JSON path '{0}.environments[{1}]'{2}. Environment ID at index {3} in the 'environments' array cannot be null or empty. Value found: {4}.</value>
+  </data>
+  <data name="ConfigValidator_RuleDetailRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'rule' is missing or null at JSON path '{0}.rule'{1}. Rule at index {2} must have a 'rule' object containing validation conditions.</value>
+  </data>
+  <data name="ConfigValidator_RulesRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required 'rules' array is missing or empty. Found {0} environment(s) but 0 rules. At least one rule definition is required. Please add a 'rules' array with at least one rule object.</value>
+  </data>
+  <data name="ConfigValidator_RuleDetailIdRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.rule.id'{1}. The 'rule' object must have a non-empty 'id' property.</value>
+  </data>
+  <data name="ConfigValidator_DuplicateRuleId" xml:space="preserve">
+    <value>Configuration validation failed: Duplicate rule ID '{0}' found at JSON paths: {1}. Rule IDs must be unique. Found {2} rule(s) with the same ID.</value>
+  </data>
+  <data name="ConfigValidator_RuleDetailIdRequiredInDetail" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'id' is missing or empty at JSON path '{0}.rule.id'. Rule ID: '{1}'. The 'rule' object must have a non-empty 'id' property.</value>
+  </data>
+  <data name="ConfigValidator_ConditionsEmpty" xml:space="preserve">
+    <value>Configuration validation failed: Required array 'conditions' is empty at JSON path '{0}.rule.conditions'{1}. Rule ID: '{2}'. At least one condition is required. Please add a 'conditions' array with at least one condition object containing 'key' and 'condition' properties.</value>
+  </data>
+  <data name="ConfigValidator_ConditionCountExceedsLimit" xml:space="preserve">
+    <value>Configuration validation failed: Condition count exceeds security limit at JSON path '{0}.rule.conditions'{1}. Rule ID: '{2}'. Actual count: {3} conditions. Maximum allowed: {4} conditions. Exceeded by: {5} conditions. This may indicate a DoS attack attempt. Please reduce the number of conditions or contact your administrator to adjust the security limits.</value>
+  </data>
+  <data name="ConfigValidator_ConditionKeyRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'key' is missing or empty at JSON path '{0}.key'. Rule ID: '{1}'. Condition at index {2} must have a non-empty 'key' property specifying the configuration key to validate.</value>
+  </data>
+  <data name="ConfigValidator_ValidatorsEmpty" xml:space="preserve">
+    <value>Configuration validation failed: Required array 'condition' is empty at JSON path '{0}.condition'{1}. Rule ID: '{2}'. Condition at index {3} must have at least one validator in the 'condition' array.</value>
+  </data>
+  <data name="ConfigValidator_ValidatorCountExceedsLimit" xml:space="preserve">
+    <value>Configuration validation failed: Validator count exceeds security limit at JSON path '{0}.condition'{1}. Rule ID: '{2}'. Actual count: {3} validators. Maximum allowed: {4} validators. Exceeded by: {5} validators. This may indicate a DoS attack attempt. Please reduce the number of validators or contact your administrator to adjust the security limits.</value>
+  </data>
+  <data name="ConfigValidator_ValidatorTypeRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'validator' is missing or empty at JSON path '{0}.validator'. Rule ID: '{1}'. Validator at index {2} must have a non-empty 'validator' property specifying the validator type.</value>
+  </data>
+  <data name="ConfigValidator_UnsupportedValidatorType" xml:space="preserve">
+    <value>Configuration validation failed: Unsupported validator type at JSON path '{0}.validator'. Rule ID: '{1}'. Found validator type: '{2}'. Supported validator types: {3}. Please use one of the supported validator types.</value>
+  </data>
+  <data name="ConfigValidator_ValidatorMessageRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'message' is missing or empty at JSON path '{0}.message'{1}. Rule ID: '{2}'. Validator at index {3} must have a non-empty 'message' property containing the error message to display when validation fails.</value>
+  </data>
+  <data name="ConfigValidator_ValidatorValueRequired" xml:space="preserve">
+    <value>Configuration validation failed: Required property 'value' is missing or null at JSON path '{0}.value'. Rule ID: '{1}'. Validator type: '{2}'. The '{3}' validator requires a 'value' property to specify the expected value for comparison. Please add a 'value' property to this validator.</value>
+  </data>
+  <data name="ConfigValidator_RuleEnvironmentNotFound" xml:space="preserve">
+    <value>Configuration validation failed: Rule references non-existent environment ID at JSON path '$.rules[{0}].environments[{1}]'. Rule ID: '{2}'. Referenced environment ID: '{3}'. Available environment IDs: {4}. Please ensure the environment ID exists in the 'environments' array or remove it from the rule's 'environments' list.</value>
+  </data>
+  <data name="ConfigValidator_PathContainsNullByte" xml:space="preserve">
+    <value>Path contains null byte (\0), which is not allowed. Path value: '{0}'. Null bytes are not valid in file paths and may indicate a security issue. Please remove any null bytes from the path.</value>
+  </data>
+  <data name="ConfigValidator_PathContainsControlChars" xml:space="preserve">
+    <value>Path contains control characters, which are not allowed. Path value: '{0}'. Control characters found: {1}. Control characters (except tab, newline, carriage return) are not valid in file paths. Please remove any control characters from the path.</value>
+  </data>
+  <data name="ConfigValidator_PathContainsInvalidChars" xml:space="preserve">
+    <value>Path contains invalid characters for the current platform. Path value: '{0}'. Invalid characters found: {1}. These characters are not allowed in file paths on this operating system. Please remove or replace these characters.</value>
+  </data>
+  <data name="ConfigValidator_PathTooManyParentRefs" xml:space="preserve">
+    <value>Path contains too many parent directory references (..). Path value: '{0}'. Found {1} consecutive parent directory references. Maximum allowed: 2 levels. This may indicate a path traversal attempt. Please use absolute paths or paths relative to the configuration file with no more than 2 parent directory references.</value>
+  </data>
+  <data name="ConfigValidator_PathConsecutiveSeparators" xml:space="preserve">
+    <value>Path contains consecutive path separators, which may indicate path manipulation: '{0}'</value>
+  </data>
+  <data name="ConfigValidator_PathTooLong" xml:space="preserve">
+    <value>Path is too long ({0} characters). Maximum allowed: {1} characters: '{2}'</value>
+  </data>
+  <data name="ConfigValidator_PathAbsoluteWithParentRefs" xml:space="preserve">
+    <value>Absolute path contains parent directory references (..), which may indicate path manipulation: '{0}'</value>
+  </data>
 </root>
 

@@ -5,7 +5,7 @@ using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 
-namespace SGuard.ConfigValidation.Tests;
+namespace SGuard.ConfigValidation.Tests.Validators;
 
 public sealed class FileValidatorTests : IDisposable
 {
@@ -36,25 +36,25 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "test-rule",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "test-detail",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             }
         };
@@ -83,25 +83,25 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "test-rule",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "test-detail",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             }
         };
@@ -133,49 +133,49 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "rule1",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "detail1",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             },
             new()
             {
                 Id = "rule2",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "detail2",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "Logging:LogLevel",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "required",
                                     Message = "Log level is required"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             }
         };
@@ -203,31 +203,31 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "test-rule",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "test-detail",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "ConnectionStrings:DefaultConnection",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "required",
                                     Message = "Connection string is required"
                                 },
-                                new()
+                                new ValidatorCondition
                                 {
                                     Validator = "min_len",
                                     Value = 10,
                                     Message = "Connection string must be at least 10 characters"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             }
         };
@@ -305,7 +305,7 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "test-rule",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = null!
             }
         };
@@ -334,25 +334,25 @@ public sealed class FileValidatorTests : IDisposable
             new()
             {
                 Id = "test-rule",
-                Environments = new List<string> { "dev" },
+                Environments = ["dev"],
                 RuleDetail = new RuleDetail
                 {
                     Id = "test-detail",
-                    Conditions = new List<Condition>
-                    {
-                        new()
+                    Conditions =
+                    [
+                        new Condition
                         {
                             Key = "Test:Key",
-                            Validators = new List<ValidatorCondition>
-                            {
-                                new()
+                            Validators =
+                            [
+                                new ValidatorCondition
                                 {
                                     Validator = "unsupported_validator",
                                     Message = "Test message"
                                 }
-                            }
+                            ]
                         }
-                    }
+                    ]
                 }
             }
         };

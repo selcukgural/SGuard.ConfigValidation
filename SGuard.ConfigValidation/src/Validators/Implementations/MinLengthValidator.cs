@@ -1,5 +1,6 @@
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Results;
 using SGuard.ConfigValidation.Validators.Base;
 
 namespace SGuard.ConfigValidation.Validators;
@@ -35,6 +36,7 @@ public sealed class MinLengthValidator : BaseValidator<object>
                 value, 
                 $"minimum length of {minLength} characters (actual length: {stringValue.Length})");
         }
+        
         return CreateSuccess();
     }
 }

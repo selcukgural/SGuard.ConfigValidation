@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.Logging;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Validators.Plugin;
 using static SGuard.ConfigValidation.Common.Throw;
@@ -70,8 +69,35 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// </summary>
     /// <param name="validatorType">The validator type name (e.g., "required", "eq", "gt"). Case-insensitive.</param>
     /// <returns>An <see cref="IValidator{T}"/> instance for the specified validator type.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="validatorType"/> is null.</exception>
-    /// <exception cref="NotSupportedException">Thrown when the validator type is not supported.</exception>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="validatorType"/> is null.</exception>
+    /// <exception cref="System.NotSupportedException">Thrown when the validator type is not supported.</exception>
+    /// <example>
+    /// <code>
+    /// using Microsoft.Extensions.Logging;
+    /// using Microsoft.Extensions.Logging.Abstractions;
+    /// using SGuard.ConfigValidation.Models;
+    /// using SGuard.ConfigValidation.Validators;
+    /// 
+    /// var logger = NullLogger&lt;ValidatorFactory&gt;.Instance;
+    /// var validatorFactory = new ValidatorFactory(logger);
+    /// 
+    /// // Get a validator instance
+    /// var requiredValidator = validatorFactory.GetValidator("required");
+    /// 
+    /// // Use the validator
+    /// var condition = new ValidatorCondition
+    /// {
+    ///     Validator = "required",
+    ///     Message = "Value is required"
+    /// };
+    /// 
+    /// var result = requiredValidator.Validate("some value", condition);
+    /// if (!result.IsValid)
+    /// {
+    ///     Console.WriteLine($"Validation failed: {result.Message}");
+    /// }
+    /// </code>
+    /// </example>
     public IValidator<object> GetValidator(string validatorType)
     {
         System.ArgumentNullException.ThrowIfNull(validatorType);

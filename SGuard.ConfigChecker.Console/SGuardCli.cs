@@ -1,9 +1,12 @@
 using System.CommandLine;
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Hooks;
 using SGuard.ConfigValidation.Output;
 using SGuard.ConfigValidation.Services;
 using System.Runtime.InteropServices;
+using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Services.Abstract;
 
 namespace SGuard.ConfigChecker.Console;
 
@@ -13,6 +16,8 @@ namespace SGuard.ConfigChecker.Console;
 public sealed class SGuardCli
 {
     private readonly IRuleEngine _ruleEngine;
+    private readonly IConfigLoader _configLoader;
+    private readonly HookExecutor _hookExecutor;
     private readonly ILogger<SGuardCli> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IOutputFormatter _outputFormatter;
@@ -24,16 +29,22 @@ public sealed class SGuardCli
     /// Initializes a new instance of the SGuardCli class.
     /// </summary>
     /// <param name="ruleEngine">The rule engine service.</param>
+    /// <param name="configLoader">The configuration loader service.</param>
+    /// <param name="hookExecutor">The hook executor service.</param>
     /// <param name="logger">Logger instance.</param>
     /// <param name="loggerFactory">Logger factory for creating loggers.</param>
     /// <param name="outputFormatter">Optional output formatter. Defaults to ConsoleOutputFormatter.</param>
-    public SGuardCli(IRuleEngine ruleEngine, ILogger<SGuardCli> logger, ILoggerFactory loggerFactory, IOutputFormatter? outputFormatter = null)
+    public SGuardCli(IRuleEngine ruleEngine, IConfigLoader configLoader, HookExecutor hookExecutor, ILogger<SGuardCli> logger, ILoggerFactory loggerFactory, IOutputFormatter? outputFormatter = null)
     {
         ArgumentNullException.ThrowIfNull(ruleEngine);
+        ArgumentNullException.ThrowIfNull(configLoader);
+        ArgumentNullException.ThrowIfNull(hookExecutor);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(loggerFactory);
         
         _ruleEngine = ruleEngine;
+        _configLoader = configLoader;
+        _hookExecutor = hookExecutor;
         _logger = logger;
         _loggerFactory = loggerFactory;
         _outputFormatter = outputFormatter ?? new ConsoleOutputFormatter(loggerFactory.CreateLogger<ConsoleOutputFormatter>());
@@ -65,6 +76,11 @@ public sealed class SGuardCli
             Description = "Output format: json, text, or console (default: console)"
         };
 
+        var outputFileOption = new Option<string?>("--output-file", "-f")
+        {
+            Description = "Path to output file. If specified, results will be written to this file instead of console. Works with both json and text formats."
+        };
+
         var verboseOption = new Option<bool>("--verbose", "-v")
         {
             Description = "Enable verbose logging"
@@ -77,6 +93,7 @@ public sealed class SGuardCli
         validateCommand.Options.Add(envOption);
         validateCommand.Options.Add(allOption);
         validateCommand.Options.Add(outputOption);
+        validateCommand.Options.Add(outputFileOption);
         validateCommand.Options.Add(verboseOption);
 
         // Use SetAction for proper exit code management (System.CommandLine 2.0.1 API)
@@ -126,6 +143,8 @@ public sealed class SGuardCli
                 outputFormat = "console";
             }
 
+            var outputFile = parseResult.GetValue(outputFileOption);
+
             var verbose = parseResult.GetValue(verboseOption);
 
             // Validate output format
@@ -136,6 +155,18 @@ public sealed class SGuardCli
                     await System.Console.Error.WriteLineAsync($"Invalid output format: {outputFormat}. Supported formats: json, text, console");
                     return (int)ExitCode.SystemError;
                 }
+            }
+
+            // Validate output file path if provided
+            if (!string.IsNullOrWhiteSpace(outputFile))
+            {
+                var outputFileValidation = ValidateAndSanitizePath(outputFile, "output file path", _logger);
+                if (!outputFileValidation.IsValid)
+                {
+                    await System.Console.Error.WriteLineAsync($"Invalid output file path: {outputFileValidation.ErrorMessage}");
+                    return (int)ExitCode.SystemError;
+                }
+                outputFile = outputFileValidation.SanitizedPath;
             }
 
             // Check for --env and --all conflict
@@ -150,7 +181,7 @@ public sealed class SGuardCli
                 return (int)ExitCode.SystemError;
             }
 
-            var exitCode = await HandleValidateCommand(configPath, environmentId, allEnvironments, outputFormat, verbose);
+            var exitCode = await HandleValidateCommand(configPath, environmentId, allEnvironments, outputFormat, outputFile, verbose);
             return (int)exitCode;
         });
 
@@ -206,7 +237,7 @@ public sealed class SGuardCli
     /// Handles the validate command execution.
     /// </summary>
     private async Task<ExitCode> HandleValidateCommand(string configPath, string? environmentId, bool allEnvironments, string outputFormat,
-                                                       bool verbose)
+                                                       string? outputFile, bool verbose)
     {
         if (verbose)
         {
@@ -214,9 +245,23 @@ public sealed class SGuardCli
         }
 
         // Get the appropriate output formatter
-        var formatter = !outputFormat.Equals("console", StringComparison.InvariantCultureIgnoreCase)
-                            ? OutputFormatterFactory.Create(outputFormat, _loggerFactory)
-                            : _outputFormatter;
+        IOutputFormatter formatter;
+        if (!string.IsNullOrWhiteSpace(outputFile))
+        {
+            // File output requested
+            formatter = OutputFormatterFactory.Create(outputFormat, _loggerFactory, outputFile);
+            _logger.LogInformation("Writing validation results to file: {OutputFile}", outputFile);
+        }
+        else if (!outputFormat.Equals("console", StringComparison.InvariantCultureIgnoreCase))
+        {
+            // Console output with specific format
+            formatter = OutputFormatterFactory.Create(outputFormat, _loggerFactory);
+        }
+        else
+        {
+            // Default console output
+            formatter = _outputFormatter;
+        }
 
         try
         {
@@ -227,19 +272,31 @@ public sealed class SGuardCli
                 _logger.LogInformation("Validating all environments from {ConfigPath}", configPath);
 
                 result = IsJsonContent(configPath)
-                             ? _ruleEngine.ValidateAllEnvironmentsFromJson(configPath)
-                             : _ruleEngine.ValidateAllEnvironments(configPath);
+                             ? await _ruleEngine.ValidateAllEnvironmentsFromJsonAsync(configPath)
+                             : await _ruleEngine.ValidateAllEnvironmentsAsync(configPath);
             }
             else
             {
                 _logger.LogInformation("Validating environment {EnvironmentId} from {ConfigPath}", environmentId, configPath);
 
                 result = IsJsonContent(configPath)
-                             ? _ruleEngine.ValidateEnvironmentFromJson(configPath, environmentId)
-                             : _ruleEngine.ValidateEnvironment(configPath, environmentId);
+                             ? await _ruleEngine.ValidateEnvironmentFromJsonAsync(configPath, environmentId)
+                             : await _ruleEngine.ValidateEnvironmentAsync(configPath, environmentId);
             }
 
             await formatter.FormatAsync(result);
+
+            // Execute hooks after validation (non-blocking, failures don't affect exit code)
+            try
+            {
+                var config = await _configLoader.LoadConfigAsync(configPath);
+                await _hookExecutor.ExecuteHooksAsync(result, config, environmentId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to execute hooks. This does not affect validation result.");
+                // Don't throw - hook failures should not affect validation
+            }
 
             var exitCode = result is { IsSuccess: true, HasValidationErrors: false } ? ExitCode.Success : ExitCode.ValidationErrors;
 
