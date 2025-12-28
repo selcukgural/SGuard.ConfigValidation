@@ -13,6 +13,7 @@ public sealed partial class TemplateVariableResolver : ITemplateVariableResolver
 {
     private readonly RuleEngineResult _result;
     private readonly string? _environmentId;
+    private readonly SecurityOptions _securityOptions;
     private readonly Dictionary<string, string> _variables;
 
     /// <summary>
@@ -20,13 +21,16 @@ public sealed partial class TemplateVariableResolver : ITemplateVariableResolver
     /// </summary>
     /// <param name="result">The validation result from the rule engine.</param>
     /// <param name="environmentId">The environment ID that was validated or null if all environments were validated.</param>
-    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="result"/> is null.</exception>
-    public TemplateVariableResolver(RuleEngineResult result, string? environmentId)
+    /// <param name="securityOptions">Security options for configuring security limits.</param>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="result"/> or <paramref name="securityOptions"/> is null.</exception>
+    public TemplateVariableResolver(RuleEngineResult result, string? environmentId, SecurityOptions securityOptions)
     {
         ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(securityOptions);
 
         _result = result;
         _environmentId = environmentId;
+        _securityOptions = securityOptions;
         _variables = BuildVariables();
     }
 
@@ -83,38 +87,42 @@ public sealed partial class TemplateVariableResolver : ITemplateVariableResolver
 
         variables["errorCount"] = errorCount.ToString();
 
-        // Errors as JSON array
+        // Errors as JSON array (limited by MaxHookErrorCount)
         var errors = new List<object>();
-
+        var errorsToProcess = new List<ValidationResult>();
+        
         if (_result.SingleResult != null)
         {
-            foreach (var error in _result.SingleResult.Errors)
-            {
-                errors.Add(new
-                {
-                    error.Message,
-                    error.ValidatorType,
-                    error.Key,
-                    Value = error.Value?.ToString()
-                });
-            }
+            errorsToProcess.AddRange(_result.SingleResult.Errors);
         }
         else
         {
             foreach (var fileResult in _result.ValidationResults)
             {
-                foreach (var error in fileResult.Errors)
-                {
-                    errors.Add(new
-                    {
-                        error.Message,
-                        error.ValidatorType,
-                        error.Key,
-                        Value = error.Value?.ToString(),
-                        File = fileResult.Path
-                    });
-                }
+                errorsToProcess.AddRange(fileResult.Errors);
             }
+        }
+        
+        foreach (var error in errorsToProcess.Take(_securityOptions.MaxHookErrorCount))
+        {
+            errors.Add(new
+            {
+                error.Message,
+                error.ValidatorType,
+                error.Key,
+                Value = error.Value?.ToString()
+            });
+        }
+        
+        if (errorsToProcess.Count > _securityOptions.MaxHookErrorCount)
+        {
+            errors.Add(new
+            {
+                Message = $"[{errorsToProcess.Count - _securityOptions.MaxHookErrorCount} more error(s) truncated - limit: {_securityOptions.MaxHookErrorCount}]",
+                ValidatorType = "System",
+                Key = "",
+                Value = ""
+            });
         }
 
         variables["errors"] = JsonSerializer.Serialize(errors, JsonOptions.Output);

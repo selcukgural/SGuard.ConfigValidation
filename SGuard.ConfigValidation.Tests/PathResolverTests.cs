@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 
 namespace SGuard.ConfigValidation.Tests;
@@ -146,6 +146,92 @@ public sealed class PathResolverTests
         result1.Should().Be(expectedPath);
         result2.Should().Be(expectedPath);
         result1.Should().Be(result2);
+    }
+
+    [Fact]
+    public async Task PathResolver_ConcurrentAccess_Should_NotThrow()
+    {
+        // Arrange
+        var securityOptions = Options.Create(new SecurityOptions());
+        var resolver = new PathResolver(securityOptions);
+        var basePath = Path.GetFullPath("base.json");
+        var tasks = new List<Task<string>>();
+
+        // Act - Create multiple concurrent resolution tasks
+        for (int i = 0; i < 100; i++)
+        {
+            var index = i;
+            tasks.Add(Task.Run(() => resolver.ResolvePath($"test{index}.json", basePath)));
+        }
+
+        // Assert - All tasks should complete without exceptions
+        var action = async () => await Task.WhenAll(tasks);
+        await action.Should().NotThrowAsync();
+
+        // Verify all results are valid paths
+        var results = await Task.WhenAll(tasks);
+        results.Should().AllSatisfy(path => path.Should().NotBeNullOrEmpty());
+        results.Should().AllSatisfy(path => Path.IsPathRooted(path).Should().BeTrue());
+    }
+
+    [Fact]
+    public void PathResolver_CacheEviction_WhenThresholdExceeded_Should_Evict()
+    {
+        // Arrange - Use a small cache size to trigger eviction
+        var securityOptions = Options.Create(new SecurityOptions
+        {
+            MaxPathCacheSize = 10 // Small cache size to trigger eviction
+        });
+        var resolver = new PathResolver(securityOptions);
+        var basePath = Path.GetFullPath("base.json");
+
+        // Act - Add more entries than the cache can hold
+        // Threshold is 110% of max (11), so we need to add at least 12 entries to trigger eviction
+        for (int i = 0; i < 15; i++)
+        {
+            resolver.ResolvePath($"test{i}.json", basePath);
+        }
+
+        // Assert - Cache should have evicted some entries
+        // After eviction, cache should be at or below max size (10)
+        // We can't directly check cache size, but we can verify that resolution still works
+        var result = resolver.ResolvePath("test0.json", basePath);
+        result.Should().NotBeNullOrEmpty();
+        Path.IsPathRooted(result).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PathResolver_CacheEviction_Concurrent_Should_BeThreadSafe()
+    {
+        // Arrange - Use a small cache size to trigger eviction under concurrent load
+        var securityOptions = Options.Create(new SecurityOptions
+        {
+            MaxPathCacheSize = 20 // Small cache size to trigger eviction
+        });
+        var resolver = new PathResolver(securityOptions);
+        var basePath = Path.GetFullPath("base.json");
+        var tasks = new List<Task<string>>();
+
+        // Act - Create many concurrent resolution tasks that will trigger eviction
+        for (int i = 0; i < 100; i++)
+        {
+            var index = i;
+            tasks.Add(Task.Run(() => resolver.ResolvePath($"test{index}.json", basePath)));
+        }
+
+        // Assert - All tasks should complete without exceptions (thread-safe eviction)
+        var action = async () => await Task.WhenAll(tasks);
+        await action.Should().NotThrowAsync();
+
+        // Verify all results are valid paths
+        var results = await Task.WhenAll(tasks);
+        results.Should().AllSatisfy(path => path.Should().NotBeNullOrEmpty());
+        results.Should().AllSatisfy(path => Path.IsPathRooted(path).Should().BeTrue());
+
+        // Verify cache still works after concurrent eviction
+        var cachedResult = resolver.ResolvePath("test0.json", basePath);
+        cachedResult.Should().NotBeNullOrEmpty();
+        Path.IsPathRooted(cachedResult).Should().BeTrue();
     }
 }
 

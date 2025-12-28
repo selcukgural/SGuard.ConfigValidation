@@ -21,7 +21,6 @@ public sealed class FileOutputFormatter : IOutputFormatter
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="filePath"/> is empty or whitespace.</exception>
     public FileOutputFormatter(string filePath)
     {
-        System.ArgumentNullException.ThrowIfNull(filePath);
         if (string.IsNullOrWhiteSpace(filePath))
         {
             throw ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
@@ -104,6 +103,7 @@ public sealed class FileOutputFormatter : IOutputFormatter
     private static void FormatFileResult(FileValidationResult fileResult, StringBuilder output)
     {
         var environmentName = Path.GetFileNameWithoutExtension(fileResult.Path);
+        
         output.AppendLine(string.Format(SR.ConsoleOutput_Environment, environmentName));
         output.AppendLine(string.Format(SR.ConsoleOutput_File, fileResult.Path));
 

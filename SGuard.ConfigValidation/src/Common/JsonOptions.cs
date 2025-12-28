@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SGuard.ConfigValidation.Security;
 
 namespace SGuard.ConfigValidation.Common;
 

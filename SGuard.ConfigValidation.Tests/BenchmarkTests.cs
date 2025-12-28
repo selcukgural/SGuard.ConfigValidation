@@ -3,11 +3,12 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -99,9 +100,9 @@ public class BenchmarkTests
     }
 
     [Benchmark]
-    public Dictionary<string, object> LoadAppSettings_LargeFile()
+    public async Task<Dictionary<string, object>> LoadAppSettings_LargeFile()
     {
-        return _configLoader.LoadAppSettingsAsync(_largeJsonFile).GetAwaiter().GetResult();
+        return await _configLoader.LoadAppSettingsAsync(_largeJsonFile);
     }
 
     [Benchmark]

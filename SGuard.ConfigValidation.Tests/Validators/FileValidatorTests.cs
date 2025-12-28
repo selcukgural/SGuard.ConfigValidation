@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
-using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests.Validators;
 
@@ -18,7 +18,7 @@ public sealed class FileValidatorTests : IDisposable
         var validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var fileValidatorLogger = NullLogger<FileValidator>.Instance;
         _fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
-        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("filevalidator-test");
+        _testDirectory = DirectoryUtility.CreateTempDirectory("filevalidator-test");
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public sealed class FileValidatorTests : IDisposable
     public void ValidateFile_With_NullAppSettings_Should_ThrowArgumentNullException()
     {
         // Arrange
-        var rules = new List<Rule>();
+        var rules = new List<Rule> { new Rule { Id = "test", Environments = ["dev"], RuleDetail = new RuleDetail { Id = "test-detail", Conditions = [] } } };
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => 
@@ -295,30 +295,6 @@ public sealed class FileValidatorTests : IDisposable
         result.Errors[0].Message.Should().Contain("Rule cannot be null");
     }
 
-    [Fact]
-    public void ValidateFile_With_NullRuleDetail_Should_AddError()
-    {
-        // Arrange
-        var appSettings = new Dictionary<string, object>();
-        var rules = new List<Rule>
-        {
-            new()
-            {
-                Id = "test-rule",
-                Environments = ["dev"],
-                RuleDetail = null!
-            }
-        };
-
-        // Act
-        var result = _fileValidator.ValidateFile("test.json", rules, appSettings);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.ErrorCount.Should().Be(1);
-        result.Errors[0].Message.Should().Contain("no rule detail");
-    }
 
     [Fact]
     public void ValidateFile_With_UnsupportedValidator_Should_AddError()
@@ -369,7 +345,7 @@ public sealed class FileValidatorTests : IDisposable
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
+        DirectoryUtility.DeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

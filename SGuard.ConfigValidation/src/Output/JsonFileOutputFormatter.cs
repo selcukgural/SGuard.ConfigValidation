@@ -22,7 +22,6 @@ public sealed class JsonFileOutputFormatter : IOutputFormatter
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="filePath"/> is empty or whitespace.</exception>
     public JsonFileOutputFormatter(string filePath)
     {
-        System.ArgumentNullException.ThrowIfNull(filePath);
         if (string.IsNullOrWhiteSpace(filePath))
         {
             throw ArgumentException(nameof(Resources.SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
@@ -94,9 +93,9 @@ public sealed class JsonFileOutputFormatter : IOutputFormatter
     /// <returns>An anonymous object containing the formatted file validation result with path, validation status, results, and errors.</returns>
     private static object FormatFileResult(FileValidationResult fileResult)
     {
-        // Optimized: Direct array initialization instead of Select().ToArray()
         var results = fileResult.Results;
         var resultsArray = new object[results.Count];
+        
         for (var i = 0; i < results.Count; i++)
         {
             var r = results[i];
@@ -112,6 +111,7 @@ public sealed class JsonFileOutputFormatter : IOutputFormatter
 
         var errors = fileResult.Errors;
         var errorsArray = new object[errors.Count];
+        
         for (var i = 0; i < errors.Count; i++)
         {
             var e = errors[i];

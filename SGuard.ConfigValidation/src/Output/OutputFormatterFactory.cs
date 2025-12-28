@@ -26,18 +26,19 @@ public static class OutputFormatterFactory
     {
         System.ArgumentException.ThrowIfNullOrWhiteSpace(format);
         System.ArgumentNullException.ThrowIfNull(loggerFactory);
-        
+
         var normalizedFormat = format.ToLowerInvariant();
+
         if (normalizedFormat == "json")
         {
             return new JsonOutputFormatter();
         }
-        
+
         if (normalizedFormat == "text" || normalizedFormat == "console" || string.IsNullOrEmpty(normalizedFormat))
         {
             return new ConsoleOutputFormatter(loggerFactory.CreateLogger<ConsoleOutputFormatter>());
         }
-        
+
         throw ArgumentException(nameof(SR.ArgumentException_UnknownOutputFormat), nameof(format), format);
     }
 
@@ -69,26 +70,25 @@ public static class OutputFormatterFactory
     {
         System.ArgumentException.ThrowIfNullOrWhiteSpace(format);
         System.ArgumentNullException.ThrowIfNull(loggerFactory);
-        
-        // If file path is provided, return file formatters
-        if (!string.IsNullOrWhiteSpace(filePath))
+
+        // If a file path is provided, return file formatters
+        if (string.IsNullOrWhiteSpace(filePath))
         {
-            var normalizedFormat = format.ToLowerInvariant();
-            if (normalizedFormat == "json")
-            {
-                return new JsonFileOutputFormatter(filePath);
-            }
-            
-            if (normalizedFormat == "text" || normalizedFormat == "console" || string.IsNullOrEmpty(normalizedFormat))
-            {
-                return new FileOutputFormatter(filePath);
-            }
-            
-            throw ArgumentException(nameof(SR.ArgumentException_UnknownOutputFormat), nameof(format), format);
+            return Create(format, loggerFactory);
         }
-        
-        // If no file path, use console formatters (existing behavior)
-        return Create(format, loggerFactory);
+
+        var normalizedFormat = format.ToLowerInvariant();
+
+        if (normalizedFormat == "json")
+        {
+            return new JsonFileOutputFormatter(filePath);
+        }
+
+        if (normalizedFormat == "text" || normalizedFormat == "console" || string.IsNullOrEmpty(normalizedFormat))
+        {
+            return new FileOutputFormatter(filePath);
+        }
+
+        throw ArgumentException(nameof(SR.ArgumentException_UnknownOutputFormat), nameof(format), format);
     }
 }
-

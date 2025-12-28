@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -5,7 +6,9 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
+using SGuard.ConfigValidation.Utils;
 using static SGuard.ConfigValidation.Common.Throw;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -89,14 +92,16 @@ public sealed class YamlLoader : IYamlLoader
             throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(yamlPath));
         }
 
-        FileSecurity.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), _logger);
+        Security.FileValidator.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_YamlFileNotFound), _logger);
 
         try
         {
-            // Check file size before reading to prevent DoS attacks
-            FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit));
+            cancellationToken.ThrowIfCancellationRequested();
 
-            var yamlContent = await SafeFileSystem.SafeReadAllTextAsync(yamlPath, cancellationToken).ConfigureAwait(false);
+            // Check file size before reading to prevent DoS attacks
+            Security.FileValidator.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit));
+
+            var yamlContent = await FileUtility.ReadAllTextAsync(yamlPath, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
@@ -122,10 +127,10 @@ public sealed class YamlLoader : IYamlLoader
             if (config.Environments.Count == 0)
             {
                 _logger.LogError("YAML configuration file {YamlPath} contains no environments. Found {RuleCount} rules", yamlPath,
-                                 config.Rules?.Count ?? 0);
+                                 config.Rules.Count);
 
                 throw ConfigurationException(nameof(SR.ConfigurationException_YamlNoEnvironments), yamlPath, Path.GetFullPath(yamlPath),
-                                             config.Rules?.Count ?? 0);
+                                             config.Rules.Count);
             }
 
             // Validate environment count to prevent DoS attacks
@@ -147,18 +152,16 @@ public sealed class YamlLoader : IYamlLoader
                 throw ConfigurationException(nameof(SR.ConfigurationException_NoRules), 
                     yamlPath, Path.GetFullPath(yamlPath), config.Environments.Count);
             }
-            else
-            {
-                // Validate rule count to prevent DoS attacks
-                if (config.Rules.Count > _securityOptions.MaxRulesCount)
-                {
-                    _logger.LogError("YAML configuration file {YamlPath} contains too many rules. Count: {Count}, Limit: {Limit}", yamlPath,
-                                     config.Rules.Count, _securityOptions.MaxRulesCount);
 
-                    throw ConfigurationException(nameof(SR.ConfigurationException_YamlRuleCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
-                                                 config.Rules.Count, _securityOptions.MaxRulesCount,
-                                                 config.Rules.Count - _securityOptions.MaxRulesCount);
-                }
+            // Validate rule count to prevent DoS attacks
+            if (config.Rules.Count > _securityOptions.MaxRulesCount)
+            {
+                _logger.LogError("YAML configuration file {YamlPath} contains too many rules. Count: {Count}, Limit: {Limit}", yamlPath,
+                                 config.Rules.Count, _securityOptions.MaxRulesCount);
+
+                throw ConfigurationException(nameof(SR.ConfigurationException_YamlRuleCountExceedsLimit), yamlPath, Path.GetFullPath(yamlPath),
+                                             config.Rules.Count, _securityOptions.MaxRulesCount,
+                                             config.Rules.Count - _securityOptions.MaxRulesCount);
             }
 
             _logger.LogInformation("YAML configuration loaded successfully from {YamlPath}. Environments: {EnvironmentCount}, Rules: {RuleCount}",
@@ -206,6 +209,12 @@ public sealed class YamlLoader : IYamlLoader
         }
         catch (Exception ex)
         {
+            // Re-throw critical exceptions immediately - they indicate severe system problems
+            if (Throw.IsCriticalException(ex))
+            {
+                throw;
+            }
+
             _logger.LogError(
                 ex, "Unexpected error loading YAML configuration from {YamlPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", yamlPath,
                 ex.GetType().Name, ex.Message);
@@ -274,14 +283,16 @@ public sealed class YamlLoader : IYamlLoader
             throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(yamlPath));
         }
 
-        FileSecurity.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
+        Security.FileValidator.EnsureFileExists(yamlPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            
             // Check file size before reading to prevent DoS attacks
-            FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
+            Security.FileValidator.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
-            var yamlContent = await SafeFileSystem.SafeReadAllTextAsync(yamlPath, cancellationToken).ConfigureAwait(false);
+            var yamlContent = await FileUtility.ReadAllTextAsync(yamlPath, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
@@ -291,7 +302,6 @@ public sealed class YamlLoader : IYamlLoader
 
             // Convert YAML to JSON for processing
             var jsonContent = ConvertYamlToJson(yamlContent);
-
             using var document = JsonDocument.Parse(jsonContent, JsonOptions.Document);
 
             // Pre-allocate dictionary with estimated capacity
@@ -300,7 +310,8 @@ public sealed class YamlLoader : IYamlLoader
                                                       yamlContent.Length / (1024 / SharedConstants.EstimatedKeysPerKilobyte)));
             var appSettings = new Dictionary<string, object>(estimatedCapacity);
 
-            FlattenJson(document.RootElement, "", appSettings);
+            var prefixBuilder = new StringBuilder();
+            FlattenJson(document.RootElement, prefixBuilder, appSettings);
 
             _logger.LogInformation("YAML app settings loaded successfully from {YamlPath}. Found {SettingCount} settings", yamlPath,
                                    appSettings.Count);
@@ -343,6 +354,12 @@ public sealed class YamlLoader : IYamlLoader
         }
         catch (Exception ex)
         {
+            // Re-throw critical exceptions immediately - they indicate severe system problems
+            if (Throw.IsCriticalException(ex))
+            {
+                throw;
+            }
+
             _logger.LogError(
                 ex, "Unexpected error loading YAML app settings from {YamlPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", yamlPath,
                 ex.GetType().Name, ex.Message);
@@ -380,6 +397,12 @@ public sealed class YamlLoader : IYamlLoader
         }
         catch (Exception ex) when (!(ex is ConfigurationException))
         {
+            // Re-throw critical exceptions immediately - they indicate severe system problems
+            if (Throw.IsCriticalException(ex))
+            {
+                throw;
+            }
+
             _logger.LogError(ex, "Unexpected error converting YAML to JSON");
             throw ConfigurationException(nameof(SR.ConfigurationException_YamlConvertFailed), ex, ex.Message);
         }
@@ -387,23 +410,42 @@ public sealed class YamlLoader : IYamlLoader
 
     /// <summary>
     /// Flattens JSON structure into a dictionary with colon-separated keys.
+    /// Uses StringBuilder to minimize string allocations in deep JSON structures.
     /// </summary>
-    private static void FlattenJson(JsonElement element, string prefix, Dictionary<string, object> result)
+    /// <param name="element">The JSON element to flatten.</param>
+    /// <param name="prefixBuilder">StringBuilder used to build the prefix path. Modified during recursion but restored before returning.</param>
+    /// <param name="result">The dictionary to store flattened key-value pairs.</param>
+    private static void FlattenJson(JsonElement element, StringBuilder prefixBuilder, Dictionary<string, object> result)
     {
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
+                // Track prefix length before appending to enable backtracking
+                var prefixLength = prefixBuilder.Length;
+                
                 foreach (var property in element.EnumerateObject())
                 {
-                    // Optimized: string interpolation is more efficient than string.Concat for small strings
-                    var newPrefix = string.IsNullOrEmpty(prefix) ? property.Name : $"{prefix}:{property.Name}";
-                    FlattenJson(property.Value, newPrefix, result);
+                    // Append colon separator if prefix is not empty
+                    if (prefixLength > 0)
+                    {
+                        prefixBuilder.Append(':');
+                    }
+                    
+                    // Append property name
+                    prefixBuilder.Append(property.Name);
+                    
+                    // Recursively flatten the property value
+                    FlattenJson(property.Value, prefixBuilder, result);
+                    
+                    // Backtrack: remove appended part to reuse StringBuilder for next property
+                    prefixBuilder.Length = prefixLength;
                 }
 
                 break;
 
             case JsonValueKind.Array:
-                result[prefix] = element.GetRawText();
+                // For arrays, we store the raw JSON string
+                result[prefixBuilder.ToString()] = element.GetRawText();
                 break;
 
             case JsonValueKind.String:
@@ -411,7 +453,9 @@ public sealed class YamlLoader : IYamlLoader
             case JsonValueKind.True:
             case JsonValueKind.False:
             case JsonValueKind.Null:
-                result[prefix] = element.ValueKind == JsonValueKind.String ? element.GetString() ?? string.Empty : element.GetRawText();
+                // Use GetRawText() for better performance (avoids ToString() allocation)
+                var key = prefixBuilder.ToString();
+                result[key] = element.ValueKind == JsonValueKind.String ? element.GetString() ?? string.Empty : element.GetRawText();
                 break;
         }
     }

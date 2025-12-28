@@ -3,10 +3,11 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
-using SGuard.ConfigValidation.Hooks;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -26,21 +27,17 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         var fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
         var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
-        var hookFactoryLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        var hookFactory = new HookFactory(hookFactoryLoggerFactory, securityOptions, httpClientFactory: null);
-        var hookExecutorLogger = NullLogger<HookExecutor>.Instance;
-        var hookExecutor = new HookExecutor(hookFactory, hookExecutorLogger);
         var cliLogger = NullLogger<SGuardCli>.Instance;
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _cli = new SGuardCli(ruleEngine, configLoader, hookExecutor, cliLogger, loggerFactory);
-        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguardcli-test");
+        _cli = new SGuardCli(ruleEngine, configLoader, cliLogger, loggerFactory);
+        _testDirectory = DirectoryUtility.CreateTempDirectory("sguardcli-test");
     }
 
     [Fact]
     public async Task RunAsync_With_ValidConfig_Should_Return_ExitCode_0()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -70,7 +67,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     }
   ]
 }");
-        var appSettingsPath = CreateTestConfigFile("appsettings.dev.json", @"{
+        CreateTestConfigFile("appsettings.dev.json", @"{
   ""Test"": {
     ""Key"": ""value""
   }
@@ -88,7 +85,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     public async Task RunAsync_With_EnvAndAllConflict_Should_Return_ExitCode_2()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -112,7 +109,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     public async Task RunAsync_With_InvalidOutputFormat_Should_Return_NonZeroExitCode()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -135,12 +132,12 @@ public sealed class SGuardCliIntegrationTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystem.SafeWriteAllText(filePath, content);
+        FileUtility.WriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
+      DirectoryUtility.DeleteDirectory(_testDirectory, recursive: true);
     }
 }

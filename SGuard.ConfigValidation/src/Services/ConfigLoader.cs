@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -6,8 +7,10 @@ using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Telemetry;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 using JsonElement = System.Text.Json.JsonElement;
@@ -100,7 +103,7 @@ public sealed class ConfigLoader : IConfigLoader
                     throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(configPath));
                 }
 
-                FileSecurity.EnsureFileExists(configPath, nameof(SR.ConfigurationException_FileNotFound), _logger);
+                Security.FileValidator.EnsureFileExists(configPath, nameof(SR.ConfigurationException_FileNotFound), _logger);
 
                 // Check if a file is YAML
                 if (IsYamlFile(configPath) && _yamlLoader != null)
@@ -111,9 +114,9 @@ public sealed class ConfigLoader : IConfigLoader
                     return result;
                 }
                 // Check file size before reading to prevent DoS attacks
-                FileSecurity.ValidateFileSize(configPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_FileSizeExceedsLimit));
+                Security.FileValidator.ValidateFileSize(configPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_FileSizeExceedsLimit));
 
-                var json = await SafeFileSystem.SafeReadAllTextAsync(configPath, cancellationToken).ConfigureAwait(false);
+                var json = await FileUtility.ReadAllTextAsync(configPath, cancellationToken: cancellationToken).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
@@ -126,7 +129,7 @@ public sealed class ConfigLoader : IConfigLoader
                 {
                     var schemaPath = GetSchemaPath(configPath);
                     
-                    if (SafeFileSystem.FileExists(schemaPath))
+                    if (FileUtility.FileExists(schemaPath))
                     {
                         _logger.LogInformation("Validating configuration against schema {SchemaPath}", schemaPath);
                         var schemaValidationResult = await _schemaValidator.ValidateAgainstFileAsync(json, schemaPath, cancellationToken).ConfigureAwait(false);
@@ -141,6 +144,7 @@ public sealed class ConfigLoader : IConfigLoader
                     }
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 var config = JsonSerializer.Deserialize<SGuardConfig>(json, JsonOptions.Deserialization);
                 
                 if (config == null)
@@ -186,7 +190,7 @@ public sealed class ConfigLoader : IConfigLoader
                 // Validate configuration structure and integrity
                 if (_configValidator != null)
                 {
-                    // ConfigValidator will use IValidatorFactory if provided, otherwise use default set
+                    // ConfigValidator will use IValidatorFactory if provided, otherwise use a default set
                     var supportedValidators = ValidatorConstants.AllValidatorTypes;
                     var validationErrors = _configValidator.Validate(config, supportedValidators);
                     
@@ -226,6 +230,12 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (Exception ex)
             {
+                // Re-throw critical exceptions immediately - they indicate severe system problems
+                if (Throw.IsCriticalException(ex))
+                {
+                    throw;
+                }
+
                 _logger.LogError(ex, "Unexpected error loading configuration from {ConfigPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
                     configPath, ex.GetType().Name, ex.Message);
                 throw ConfigurationException(nameof(SR.ConfigurationException_UnexpectedError), ex, 
@@ -295,7 +305,7 @@ public sealed class ConfigLoader : IConfigLoader
                     throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(appSettingsPath));
                 }
 
-                FileSecurity.EnsureFileExists(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
+                Security.FileValidator.EnsureFileExists(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
 
                 // Check if a file is YAML
                 if (IsYamlFile(appSettingsPath) && _yamlLoader != null)
@@ -306,18 +316,20 @@ public sealed class ConfigLoader : IConfigLoader
                     return result;
                 }
                 // Check file size before reading to prevent DoS attacks
-                FileSecurity.ValidateFileSize(appSettingsPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
+                Security.FileValidator.ValidateFileSize(appSettingsPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
                 // Get file size to determine if we should use streaming
+                // Use configurable threshold from SecurityOptions for better memory management
                 var fileInfo = new FileInfo(appSettingsPath);
-                var useStreaming = fileInfo.Length > SharedConstants.StreamingThresholdBytes;
+                var streamingThreshold = _securityOptions.StreamingThresholdBytes;
+                var useStreaming = fileInfo.Length > streamingThreshold;
 
                 if (useStreaming)
                 {
                     return await LoadAppSettingsStreamingAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
                 }
 
-                var json = await SafeFileSystem.SafeReadAllTextAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
+                var json = await FileUtility.ReadAllTextAsync(appSettingsPath, cancellationToken: cancellationToken).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
@@ -325,6 +337,7 @@ public sealed class ConfigLoader : IConfigLoader
                     return new Dictionary<string, object>();
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 using var document = JsonDocument.Parse(json, JsonOptions.Document);
                 
                 // Pre-allocate dictionary with estimated capacity based on JSON size
@@ -335,7 +348,9 @@ public sealed class ConfigLoader : IConfigLoader
                         json.Length / (1024 / SharedConstants.EstimatedKeysPerKilobyte)));
                 var appSettings = new Dictionary<string, object>(estimatedCapacity);
                 
-                FlattenJson(document.RootElement, "", appSettings);
+                cancellationToken.ThrowIfCancellationRequested();
+                var prefixBuilder = new StringBuilder();
+                FlattenJson(document.RootElement, prefixBuilder, appSettings, 0);
                 
                 _logger.LogInformation("App settings loaded successfully from {AppSettingsPath}. Found {SettingCount} settings", 
                     appSettingsPath, appSettings.Count);
@@ -366,6 +381,12 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (Exception ex)
             {
+                // Re-throw critical exceptions immediately - they indicate severe system problems
+                if (Throw.IsCriticalException(ex))
+                {
+                    throw;
+                }
+
                 stopwatch.Stop();
                 ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
                 _logger.LogError(ex, "Unexpected error loading app settings from {AppSettingsPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
@@ -382,49 +403,90 @@ public sealed class ConfigLoader : IConfigLoader
         /// </summary>
         private async Task<Dictionary<string, object>> LoadAppSettingsStreamingAsync(string appSettingsPath, CancellationToken cancellationToken = default)
         {
-            // Pre-allocate dictionary with estimated capacity
-            var estimatedCapacity = (int)Math.Min(
-                SharedConstants.MaxDictionaryCapacity, 
-                new FileInfo(appSettingsPath).Length / 1024 * SharedConstants.EstimatedKeysPerMegabyte);
-            var appSettings = new Dictionary<string, object>(estimatedCapacity);
-            
-            // Use FileStream with optimized buffer for large files
-            using var fileStream = new FileStream(
-                appSettingsPath, 
-                FileMode.Open, 
-                FileAccess.Read, 
-                FileShare.Read, 
-                bufferSize: SharedConstants.FileStreamBufferSize, 
-                useAsync: true);
-            
-            using var document = await JsonDocument.ParseAsync(fileStream, JsonOptions.Document, cancellationToken).ConfigureAwait(false);
-            
-            FlattenJson(document.RootElement, "", appSettings);
-            
-            _logger.LogInformation("App settings loaded successfully from {AppSettingsPath} using streaming. Found {SettingCount} settings", 
-                appSettingsPath, appSettings.Count);
-            
-            return appSettings;
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                // Pre-allocate dictionary with estimated capacity
+                var estimatedCapacity = (int)Math.Min(
+                    SharedConstants.MaxDictionaryCapacity, 
+                    new FileInfo(appSettingsPath).Length / 1024 * SharedConstants.EstimatedKeysPerMegabyte);
+                var appSettings = new Dictionary<string, object>(estimatedCapacity);
+                
+                // Use FileStream with optimized buffer for large files
+                await using var fileStream = new FileStream(
+                    appSettingsPath, 
+                    FileMode.Open, 
+                    FileAccess.Read, 
+                    FileShare.Read, 
+                    bufferSize: SharedConstants.FileStreamBufferSize, 
+                    useAsync: true);
+                
+                using var document = await JsonDocument.ParseAsync(fileStream, JsonOptions.Document, cancellationToken).ConfigureAwait(false);
+                
+                cancellationToken.ThrowIfCancellationRequested();
+                var prefixBuilder = new StringBuilder();
+                FlattenJson(document.RootElement, prefixBuilder, appSettings, 0);
+                
+                _logger.LogInformation("App settings loaded successfully from {AppSettingsPath} using streaming. Found {SettingCount} settings", 
+                    appSettingsPath, appSettings.Count);
+                
+                return appSettings;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
+            }
         }
 
-    private static void FlattenJson(JsonElement element, string prefix, Dictionary<string, object> result)
+    /// <summary>
+    /// Flattens a JSON element into a dictionary with colon-separated keys.
+    /// Uses StringBuilder to minimize string allocations in deep JSON structures.
+    /// </summary>
+    /// <param name="element">The JSON element to flatten.</param>
+    /// <param name="prefixBuilder">StringBuilder used to build the prefix path. Modified during recursion but restored before returning.</param>
+    /// <param name="result">The dictionary to store flattened key-value pairs.</param>
+    /// <param name="currentDepth">Current depth in the JSON structure for stack overflow protection.</param>
+    private void FlattenJson(JsonElement element, StringBuilder prefixBuilder, Dictionary<string, object> result, int currentDepth)
     {
+        // Check depth limit to prevent stack overflow attacks
+        if (currentDepth > _securityOptions.MaxJsonDepth)
+        {
+            var prefix = prefixBuilder.ToString();
+            _logger.LogError("JSON depth limit exceeded. Current depth: {CurrentDepth}, Max depth: {MaxDepth}, Prefix: {Prefix}",
+                currentDepth, _securityOptions.MaxJsonDepth, prefix);
+            throw ConfigurationException(nameof(SR.ConfigurationException_JsonDepthExceedsLimit),
+                currentDepth, _securityOptions.MaxJsonDepth, prefix);
+        }
+        
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
+                // Track prefix length before appending to enable backtracking
+                var prefixLength = prefixBuilder.Length;
+                
                 foreach (var property in element.EnumerateObject())
                 {
-                    // Optimized: string interpolation is more efficient than string.Concat for small strings
-                    var newPrefix = string.IsNullOrEmpty(prefix) 
-                        ? property.Name 
-                        : $"{prefix}:{property.Name}";
-                    FlattenJson(property.Value, newPrefix, result);
+                    // Append colon separator if prefix is not empty
+                    if (prefixLength > 0)
+                    {
+                        prefixBuilder.Append(':');
+                    }
+                    
+                    // Append property name
+                    prefixBuilder.Append(property.Name);
+                    
+                    // Recursively flatten the property value
+                    FlattenJson(property.Value, prefixBuilder, result, currentDepth + 1);
+                    
+                    // Backtrack: remove appended part to reuse StringBuilder for next property
+                    prefixBuilder.Length = prefixLength;
                 }
                 break;
                 
             case JsonValueKind.Array:
                 // For arrays, we store the raw JSON string
-                result[prefix] = element.GetRawText();
+                result[prefixBuilder.ToString()] = element.GetRawText();
                 break;
                 
             case JsonValueKind.String:
@@ -433,7 +495,8 @@ public sealed class ConfigLoader : IConfigLoader
             case JsonValueKind.False:
             case JsonValueKind.Null:
                 // Use GetRawText() for better performance (avoids ToString() allocation)
-                result[prefix] = element.ValueKind == JsonValueKind.String 
+                var key = prefixBuilder.ToString();
+                result[key] = element.ValueKind == JsonValueKind.String 
                     ? element.GetString() ?? string.Empty
                     : element.GetRawText();
                 break;
@@ -461,7 +524,7 @@ public sealed class ConfigLoader : IConfigLoader
         };
 
         // Return the first existing schema file, or the first one as default
-        var schemaPath = possibleSchemaPaths.FirstOrDefault(path => SafeFileSystem.FileExists(path)) 
+        var schemaPath = possibleSchemaPaths.FirstOrDefault(path => FileUtility.FileExists(path)) 
                         ?? possibleSchemaPaths[0];
 
         return schemaPath;

@@ -2,11 +2,12 @@ using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using Xunit.Abstractions;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests;
 

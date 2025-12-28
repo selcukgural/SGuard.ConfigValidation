@@ -55,7 +55,6 @@ public sealed class JsonOutputFormatter : IOutputFormatter
     /// <returns>An anonymous object containing the formatted file validation result with path, validation status, results, and errors.</returns>
     private static object FormatFileResult(FileValidationResult fileResult)
     {
-        // Optimized: Direct array initialization instead of Select().ToArray()
         var results = fileResult.Results;
         var resultsArray = new object[results.Count];
         for (var i = 0; i < results.Count; i++)

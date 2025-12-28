@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Security;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -20,7 +20,8 @@ public sealed class SecurityOptionsHardLimitTests
             MaxValidatorsPerCondition = SecurityConstants.MaxValidatorsPerConditionHardLimit + 100,
             MaxPathCacheSize = SecurityConstants.MaxPathCacheSizeHardLimit + 10000,
             MaxPathLength = SecurityConstants.MaxPathLengthHardLimit + 1000,
-            MaxJsonDepth = SecurityConstants.MaxJsonDepthHardLimit + 100
+            MaxJsonDepth = SecurityConstants.MaxJsonDepthHardLimit + 100,
+            MaxHookErrorCount = SecurityConstants.MaxHookErrorCountHardLimit + 100
         };
         var logger = NullLogger<SecurityOptions>.Instance;
 
@@ -37,6 +38,7 @@ public sealed class SecurityOptionsHardLimitTests
         options.MaxPathCacheSize.Should().Be(SecurityConstants.MaxPathCacheSizeHardLimit);
         options.MaxPathLength.Should().Be(SecurityConstants.MaxPathLengthHardLimit);
         options.MaxJsonDepth.Should().Be(SecurityConstants.MaxJsonDepthHardLimit);
+        options.MaxHookErrorCount.Should().Be(SecurityConstants.MaxHookErrorCountHardLimit);
     }
 
     [Fact]
@@ -122,6 +124,60 @@ public sealed class SecurityOptionsHardLimitTests
         options.MaxFileSizeBytes.Should().Be(SecurityConstants.MaxFileSizeBytesHardLimit);
         options.MaxEnvironmentsCount.Should().Be(SecurityConstants.MaxEnvironmentsCountHardLimit);
         options.MaxRulesCount.Should().Be(SecurityConstants.MaxRulesCountHardLimit);
+    }
+
+    [Fact]
+    public void SecurityOptions_ValidateAndClamp_MaxHookErrorCount_ExceedingHardLimit_Should_Clamp()
+    {
+        // Arrange
+        var options = new SecurityOptions
+        {
+            MaxHookErrorCount = SecurityConstants.MaxHookErrorCountHardLimit + 500
+        };
+        var logger = NullLogger<SecurityOptions>.Instance;
+
+        // Act
+        var clamped = options.ValidateAndClamp(logger);
+
+        // Assert
+        clamped.Should().BeTrue();
+        options.MaxHookErrorCount.Should().Be(SecurityConstants.MaxHookErrorCountHardLimit);
+    }
+
+    [Fact]
+    public void SecurityOptions_ValidateAndClamp_MaxHookErrorCount_WithinHardLimit_Should_NotClamp()
+    {
+        // Arrange
+        var options = new SecurityOptions
+        {
+            MaxHookErrorCount = SecurityConstants.MaxHookErrorCountHardLimit - 100
+        };
+        var logger = NullLogger<SecurityOptions>.Instance;
+
+        // Act
+        var clamped = options.ValidateAndClamp(logger);
+
+        // Assert
+        clamped.Should().BeFalse();
+        options.MaxHookErrorCount.Should().Be(SecurityConstants.MaxHookErrorCountHardLimit - 100);
+    }
+
+    [Fact]
+    public void SecurityOptions_ValidateAndClamp_MaxHookErrorCount_AtHardLimit_Should_NotClamp()
+    {
+        // Arrange
+        var options = new SecurityOptions
+        {
+            MaxHookErrorCount = SecurityConstants.MaxHookErrorCountHardLimit
+        };
+        var logger = NullLogger<SecurityOptions>.Instance;
+
+        // Act
+        var clamped = options.ValidateAndClamp(logger);
+
+        // Assert
+        clamped.Should().BeFalse();
+        options.MaxHookErrorCount.Should().Be(SecurityConstants.MaxHookErrorCountHardLimit);
     }
 }
 

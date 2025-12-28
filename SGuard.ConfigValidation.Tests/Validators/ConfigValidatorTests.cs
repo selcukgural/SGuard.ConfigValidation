@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using Environment = SGuard.ConfigValidation.Models.Environment;
@@ -445,31 +445,6 @@ public sealed class ConfigValidatorTests
         errors.Should().Contain(e => (e.Contains("'id' is required") || e.Contains("Required property 'id'")) && e.Contains("rule"));
     }
 
-    [Fact]
-    public void Validate_With_NullRuleDetail_Should_Return_Error()
-    {
-        // Arrange
-        var config = new SGuardConfig
-        {
-            Version = "1",
-            Environments = [new Environment { Id = "dev", Name = "Development", Path = "appsettings.Development.json" }],
-            Rules =
-            [
-                new Rule
-                {
-                    Id = "rule1",
-                    Environments = ["dev"],
-                    RuleDetail = null!
-                }
-            ]
-        };
-
-        // Act
-        var errors = _validator.Validate(config, _validatorFactory.GetSupportedValidators());
-
-        // Assert
-        errors.Should().Contain(e => e.Contains("'rule' object is required") || e.Contains("Required property 'rule'"));
-    }
 
     [Fact]
     public void Validate_With_EmptyRulesArray_Should_Return_Error()

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Telemetry;
 using static SGuard.ConfigValidation.Common.Throw;
@@ -15,8 +15,15 @@ public sealed class PathResolver : IPathResolver
 {
     // Cache for resolved paths to avoid repeated calculations
     // The key format: "{path}|{basePath}"
-    private readonly ConcurrentDictionary<string, string> _pathCache = new();
+    // Value includes both the resolved path and last access timestamp for LRU eviction
+    private readonly ConcurrentDictionary<string, (string Path, DateTime LastAccess)> _pathCache = new();
     private readonly SecurityOptions _securityOptions;
+
+    // Eviction threshold multiplier: eviction triggers when cache reaches 100% of max size (more aggressive)
+    private const double EvictionThresholdMultiplier = 1.0;
+    
+    // Percentage of cache entries to evict when threshold is exceeded (increased for better memory management)
+    private const double EvictionPercentage = 0.3;
 
     /// <summary>
     /// Initializes a new instance of the PathResolver class.
@@ -79,15 +86,19 @@ public sealed class PathResolver : IPathResolver
         }
 
         // Sanitize a cache key to prevent cache poisoning
-        var sanitizedCacheKey = PathSecurity.SanitizeCacheKey($"{path}|{basePath}");
+        // Use string.Concat instead of string interpolation for better performance
+        var sanitizedCacheKey = SafeFilePath.SanitizeCacheKey(string.Concat(path, "|", basePath));
         
         // Check cache first
-        if (_pathCache.TryGetValue(sanitizedCacheKey, out var cachedPath))
+        if (_pathCache.TryGetValue(sanitizedCacheKey, out var cachedEntry))
         {
+            // Update last access time for LRU tracking (atomic update)
+            _pathCache.TryUpdate(sanitizedCacheKey, (cachedEntry.Path, DateTime.UtcNow), cachedEntry);
+            
             // Validate a cached path is still within the base directory (defense in depth)
-            PathSecurity.ValidateResolvedPath(cachedPath, basePath);
+            SafeFilePath.ValidateResolvedPath(cachedEntry.Path, basePath);
             ValidationMetrics.RecordCacheHit();
-            return cachedPath;
+            return cachedEntry.Path;
         }
         
         ValidationMetrics.RecordCacheMiss();
@@ -100,12 +111,12 @@ public sealed class PathResolver : IPathResolver
             resolvedPath = Path.GetFullPath(path);
             
             // Validate that an absolute path is within the base directory
-            PathSecurity.ValidateResolvedPath(resolvedPath, basePath);
+            SafeFilePath.ValidateResolvedPath(resolvedPath, basePath);
             
             // Validate symlink if the path exists
             if (File.Exists(resolvedPath) || Directory.Exists(resolvedPath))
             {
-                PathSecurity.ValidateSymlink(resolvedPath, basePath);
+                SafeFilePath.ValidateSymlink(resolvedPath, basePath);
             }
         }
         else
@@ -117,45 +128,129 @@ public sealed class PathResolver : IPathResolver
                                         path : Path.Combine(baseDirectory, path));
             
             // Validate that a resolved path is within the base directory
-            PathSecurity.ValidateResolvedPath(resolvedPath, basePath);
+            SafeFilePath.ValidateResolvedPath(resolvedPath, basePath);
             
             // Validate symlink if the path exists
             if (File.Exists(resolvedPath) || Directory.Exists(resolvedPath))
             {
-                PathSecurity.ValidateSymlink(resolvedPath, basePath);
+                SafeFilePath.ValidateSymlink(resolvedPath, basePath);
             }
         }
         
-        // Cache the resolved path (only if validation passed)
+        // Cache the resolved path with current timestamp (only if validation passed)
         // Enforce cache size limit to prevent memory exhaustion
-        // Use atomic check-and-add pattern to avoid race conditions
-        // TryAdd will fail if cache is full, then we evict and retry
-        if (!_pathCache.TryAdd(sanitizedCacheKey, resolvedPath))
+        // Use an atomic check-and-add pattern with safe eviction to avoid race conditions
+        var cacheEntry = (resolvedPath, DateTime.UtcNow);
+        var added = _pathCache.TryAdd(sanitizedCacheKey, cacheEntry);
+        
+        if (!added)
         {
             // Key already exists in cache (shouldn't happen due to cache check above, but handle it)
-            // Update the existing entry
-            _pathCache[sanitizedCacheKey] = resolvedPath;
-        }
-        else
-        {
-            // Successfully added, but check if we need to evict entries
-            // Use atomic check: if count exceeds limit, evict oldest entries
-            // This is still not perfect (race condition possible), but better than before
-            // In high-concurrency scenarios, cache might temporarily exceed limit, but will self-correct
-            if (_pathCache.Count > _securityOptions.MaxPathCacheSize)
-            {
-                // Evict entries until we're under the limit
-                // Remove oldest entries (simple eviction: remove first N entries)
-                var entriesToRemove = _pathCache.Count - _securityOptions.MaxPathCacheSize + 1; // Remove one extra to make room
-                var keysToRemove = _pathCache.Keys.Take(entriesToRemove).ToList();
-                foreach (var key in keysToRemove)
-                {
-                    _pathCache.TryRemove(key, out _);
-                }
-            }
+            // Update the existing entry atomically with new timestamp
+            _pathCache.TryUpdate(sanitizedCacheKey, cacheEntry, _pathCache[sanitizedCacheKey]);
         }
         
+        // Check if cache size exceeds threshold and evict if necessary
+        // This is lock-free and uses threshold-based eviction with LRU to minimize overhead
+        TryEvictIfNeeded();
+
         return resolvedPath;
+    }
+
+    /// <summary>
+    /// Checks if cache size exceeds the eviction threshold and evicts entries if necessary.
+    /// Uses a lock-free threshold-based approach with LRU (Least Recently Used) eviction to minimize eviction overhead.
+    /// </summary>
+    /// <remarks>
+    /// Eviction is triggered when cache size exceeds MaxPathCacheSize * EvictionThresholdMultiplier (100%).
+    /// When triggered, approximately EvictionPercentage (30%) of entries are evicted, prioritizing least recently used entries.
+    /// This approach reduces frequent evictions, improves performance, and prevents memory leaks.
+    /// </remarks>
+    private void TryEvictIfNeeded()
+    {
+        // Calculate eviction threshold (100% of max cache size - more aggressive to prevent memory leaks)
+        var threshold = (int)(_securityOptions.MaxPathCacheSize * EvictionThresholdMultiplier);
+        
+        // Fast path: check if eviction is needed (atomic read)
+        var currentCount = _pathCache.Count;
+        
+        if (currentCount <= threshold)
+        {
+            return; // No eviction needed
+        }
+
+        // Double-check pattern: count might have changed since first check
+        // This is lock-free and safe because ConcurrentDictionary.Count is atomic
+        var doubleCheckCount = _pathCache.Count;
+        
+        if (doubleCheckCount <= threshold)
+        {
+            return; // Another thread already evicted or count decreased
+        }
+
+        // Calculate how many entries to evict (30% of current cache size - more aggressive)
+        // Ensure we evict at least enough to bring cache below max size
+        var entriesToEvict = Math.Max(
+            (int)(doubleCheckCount * EvictionPercentage),
+            doubleCheckCount - _securityOptions.MaxPathCacheSize + 1);
+
+        EvictLeastRecentlyUsedEntries(entriesToEvict);
+    }
+
+    /// <summary>
+    /// Evicts the specified number of least recently used entries from the cache.
+    /// Uses LRU (Least Recently Used) algorithm to prioritize eviction of unused entries.
+    /// </summary>
+    /// <param name="count">The number of entries to evict.</param>
+    /// <remarks>
+    /// This method is thread-safe and lock-free. It collects all cache entries, sorts them by last access time,
+    /// and evicts the least recently used entries. New entries may be added during eviction, which is acceptable
+    /// and handled by the threshold mechanism. This prevents memory leaks by ensuring unused entries are evicted first.
+    /// </remarks>
+    private void EvictLeastRecentlyUsedEntries(int count)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        // Collect all entries with their access times for sorting
+        // This is safe because we're only reading, and ConcurrentDictionary supports concurrent enumeration
+        var entries = new List<(string Key, DateTime LastAccess)>();
+        
+        foreach (var kvp in _pathCache)
+        {
+            entries.Add((kvp.Key, kvp.Value.LastAccess));
+        }
+
+        // If we have fewer entries than requested, evict all
+        if (entries.Count <= count)
+        {
+            foreach (var entry in entries)
+            {
+                _pathCache.TryRemove(entry.Key, out _);
+            }
+
+            return;
+        }
+
+        // Sort by last access time (oldest first) and evict the least recently used entries
+        entries.Sort((a, b) => a.LastAccess.CompareTo(b.LastAccess));
+        
+        var evictedCount = 0;
+        foreach (var entry in entries)
+        {
+            if (evictedCount >= count)
+            {
+                break;
+            }
+
+            // TryRemove is thread-safe and atomic
+            if (_pathCache.TryRemove(entry.Key, out _))
+            {
+                evictedCount++;
+            }
+        }
     }
 }
 

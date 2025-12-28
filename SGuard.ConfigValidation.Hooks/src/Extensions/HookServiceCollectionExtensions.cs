@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SGuard.ConfigValidation.Common;
 
 namespace SGuard.ConfigValidation.Hooks;
 
@@ -36,20 +38,24 @@ public static class HookServiceCollectionExtensions
         // Register HookFactory
         // Note: IHttpClientFactory should be registered via services.AddHttpClient() before calling AddSGuardHooks()
         // If IHttpClientFactory is not registered, HookFactory will fall back to creating new HttpClient instances
+        // Note: SecurityOptions should be registered via services.Configure<SecurityOptions>() before calling AddSGuardHooks()
         services.TryAddSingleton<HookFactory>(serviceProvider =>
         {
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>();
             var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
-            return new HookFactory(loggerFactory, httpClientFactory);
+            return new HookFactory(loggerFactory, securityOptions.Value, httpClientFactory);
         });
 
         // Register HookExecutor
+        // Note: SecurityOptions should be registered via services.Configure<SecurityOptions>() before calling AddSGuardHooks()
         services.TryAddSingleton<HookExecutor>(serviceProvider =>
         {
             var hookFactory = serviceProvider.GetRequiredService<HookFactory>();
+            var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>();
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<HookExecutor>();
-            return new HookExecutor(hookFactory, logger);
+            return new HookExecutor(hookFactory, securityOptions.Value, logger);
         });
 
         return services;

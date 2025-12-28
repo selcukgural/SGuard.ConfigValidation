@@ -19,6 +19,7 @@ public sealed class ConsoleOutputFormatter : IOutputFormatter
     public ConsoleOutputFormatter(ILogger<ConsoleOutputFormatter> logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
+        
         _logger = logger;
     }
 
@@ -80,6 +81,7 @@ public sealed class ConsoleOutputFormatter : IOutputFormatter
     private void FormatFileResult(FileValidationResult fileResult)
     {
         var environmentName = Path.GetFileNameWithoutExtension(fileResult.Path);
+        
         _logger.LogInformation(SR.ConsoleOutput_Environment, environmentName);
         _logger.LogInformation(SR.ConsoleOutput_File, fileResult.Path);
         
@@ -100,6 +102,7 @@ public sealed class ConsoleOutputFormatter : IOutputFormatter
             {
                 _logger.LogError(SR.ConsoleOutput_Key, validationResult.Key);
                 _logger.LogError(SR.ConsoleOutput_ValidatorType, validationResult.ValidatorType, validationResult.Message);
+                
                 if (validationResult.Value != null)
                 {
                     _logger.LogError(SR.ConsoleOutput_CurrentValue, validationResult.Value);

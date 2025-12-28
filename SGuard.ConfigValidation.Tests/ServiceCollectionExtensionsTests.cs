@@ -1,11 +1,17 @@
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SGuard.ConfigValidation.Common;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Extensions;
+using SGuard.ConfigValidation.Output;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Services.Abstract;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
+using SGuard.ConfigValidation.Validators.Plugin;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -318,7 +324,7 @@ public sealed class ServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         var testLoggerProvider = new TestLoggerProvider(LogLevel.Debug);
-        var testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguard-test");
+        var testDirectory = DirectoryUtility.CreateTempDirectory("sguard-test");
 
         try
         {
@@ -443,6 +449,238 @@ public sealed class ServiceCollectionExtensionsTests
         // Assert - Last log level should be used
         logger.IsEnabled(LogLevel.Warning).Should().BeTrue();
         logger.IsEnabled(LogLevel.Debug).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_With_Configuration_Should_BindSecurityOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Security:MaxFileSizeBytes", "1048576" },
+                { "Security:MaxEnvironmentsCount", "100" }
+            })
+            .Build();
+
+        // Act
+        services.AddSGuardConfigValidation(configuration);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>().Value;
+
+        // Assert
+        securityOptions.Should().NotBeNull();
+        securityOptions.MaxFileSizeBytes.Should().Be(1048576);
+        securityOptions.MaxEnvironmentsCount.Should().Be(100);
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_With_ConfigureSecurityOptions_Should_UseConfiguredOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        Action<SecurityOptions> configureOptions = options =>
+        {
+            options.MaxFileSizeBytes = 2048576;
+            options.MaxEnvironmentsCount = 200;
+        };
+
+        // Act
+        services.AddSGuardConfigValidation(configureSecurityOptions: configureOptions);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>().Value;
+
+        // Assert
+        securityOptions.Should().NotBeNull();
+        securityOptions.MaxFileSizeBytes.Should().Be(2048576);
+        securityOptions.MaxEnvironmentsCount.Should().Be(200);
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_With_PluginDirectories_Should_RegisterValidatorPluginDiscovery()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var pluginDirectories = new[] { "/path/to/plugins" };
+
+        // Act
+        services.AddSGuardConfigValidation(pluginDirectories: pluginDirectories);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var discovery = serviceProvider.GetService<ValidatorPluginDiscovery>();
+
+        // Assert
+        discovery.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_Without_PluginDirectories_Should_NotRegisterValidatorPluginDiscovery()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddSGuardConfigValidation();
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var discovery = serviceProvider.GetService<ValidatorPluginDiscovery>();
+
+        // Assert
+        discovery.Should().BeNull();
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_Should_Register_AllServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddSGuardConfigValidation();
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert - Core services
+        serviceProvider.GetService<IRuleEngine>().Should().NotBeNull();
+        serviceProvider.GetService<IConfigLoader>().Should().NotBeNull();
+        serviceProvider.GetService<IFileValidator>().Should().NotBeNull();
+        serviceProvider.GetService<IPathResolver>().Should().NotBeNull();
+        serviceProvider.GetService<IValidatorFactory>().Should().NotBeNull();
+        serviceProvider.GetService<IConfigValidator>().Should().NotBeNull();
+
+        // Assert - Optional services
+        serviceProvider.GetService<IYamlLoader>().Should().NotBeNull();
+        serviceProvider.GetService<ISchemaValidator>().Should().NotBeNull();
+
+        // Assert - Output formatters
+        var formatters = serviceProvider.GetServices<IOutputFormatter>();
+        formatters.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidationCore_Should_Register_OnlyCoreServices()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddSGuardConfigValidationCore();
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert - Core services
+        serviceProvider.GetService<IRuleEngine>().Should().NotBeNull();
+        serviceProvider.GetService<IConfigLoader>().Should().NotBeNull();
+        serviceProvider.GetService<IFileValidator>().Should().NotBeNull();
+        serviceProvider.GetService<IPathResolver>().Should().NotBeNull();
+        serviceProvider.GetService<IValidatorFactory>().Should().NotBeNull();
+        serviceProvider.GetService<IConfigValidator>().Should().NotBeNull();
+
+        // Assert - Optional services should NOT be registered
+        serviceProvider.GetService<IYamlLoader>().Should().BeNull();
+        serviceProvider.GetService<ISchemaValidator>().Should().BeNull();
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidationCore_With_Configuration_Should_BindSecurityOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Security:MaxFileSizeBytes", "1048576" }
+            })
+            .Build();
+
+        // Act
+        services.AddSGuardConfigValidationCore(configuration);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>().Value;
+
+        // Assert
+        securityOptions.Should().NotBeNull();
+        securityOptions.MaxFileSizeBytes.Should().Be(1048576);
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidationCore_With_ConfigureSecurityOptions_Should_UseConfiguredOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        Action<SecurityOptions> configureOptions = options =>
+        {
+            options.MaxFileSizeBytes = 3048576;
+        };
+
+        // Act
+        services.AddSGuardConfigValidationCore(configureSecurityOptions: configureOptions);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>().Value;
+
+        // Assert
+        securityOptions.Should().NotBeNull();
+        securityOptions.MaxFileSizeBytes.Should().Be(3048576);
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidationCore_With_PluginDirectories_Should_RegisterValidatorPluginDiscovery()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var pluginDirectories = new[] { "/path/to/plugins" };
+
+        // Act
+        services.AddSGuardConfigValidationCore(pluginDirectories: pluginDirectories);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var discovery = serviceProvider.GetService<ValidatorPluginDiscovery>();
+
+        // Assert
+        discovery.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void AddSGuardConfigValidation_With_ConfigurationAndConfigureOptions_Should_PreferConfigureOptions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Security:MaxFileSizeBytes", "1048576" }
+            })
+            .Build();
+
+        Action<SecurityOptions> configureOptions = options =>
+        {
+            options.MaxFileSizeBytes = 4048576; // Override configuration
+        };
+
+        // Act
+        services.AddSGuardConfigValidation(configuration, configureOptions);
+        services.AddLogging();
+
+        var serviceProvider = services.BuildServiceProvider();
+        var securityOptions = serviceProvider.GetRequiredService<IOptions<SecurityOptions>>().Value;
+
+        // Assert
+        securityOptions.Should().NotBeNull();
+        securityOptions.MaxFileSizeBytes.Should().Be(4048576); // configureOptions should take precedence
     }
 }
 

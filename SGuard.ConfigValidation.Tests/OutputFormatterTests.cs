@@ -1,9 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Output;
 using SGuard.ConfigValidation.Results;
 using System.Text;
+using SGuard.ConfigValidation.Utils;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -13,12 +13,12 @@ public sealed class OutputFormatterTests : IDisposable
 
     public OutputFormatterTests()
     {
-        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("outputformatter-test");
+        _testDirectory = DirectoryUtility.CreateTempDirectory("outputformatter-test");
     }
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
+        DirectoryUtility.DeleteDirectory(_testDirectory, recursive: true);
     }
     private sealed class TestLoggerProvider : ILoggerProvider
     {

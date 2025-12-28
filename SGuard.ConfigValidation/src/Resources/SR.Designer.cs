@@ -241,6 +241,15 @@ namespace SGuard.ConfigValidation.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Configuration loading failed: JSON depth exceeds the maximum allowed depth. Current depth: {0}. Maximum allowed depth: {1}. JSON path: &apos;{2}&apos;. Please reduce the nesting level or increase the maximum allowed depth in security options..
+        /// </summary>
+        public static string ConfigurationException_JsonDepthExceedsLimit {
+            get {
+                return ResourceManager.GetString("ConfigurationException_JsonDepthExceedsLimit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Configuration validation failed: Environment count exceeds security limit. File: &apos;{0}&apos; (absolute path: &apos;{1}&apos;). Actual count: {2} environments. Maximum allowed: {3} environments. Exceeded by: {4} environments. This may indicate a DoS attack attempt. Please reduce the number of environments or contact your administrator to adjust the security limits..
         /// </summary>
         public static string ConfigurationException_EnvironmentCountExceedsLimit {

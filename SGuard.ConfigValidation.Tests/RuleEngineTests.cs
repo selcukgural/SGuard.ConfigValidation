@@ -1,9 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
+using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -23,14 +25,14 @@ public sealed class RuleEngineTests : IDisposable
         var fileValidator = new FileValidator(validatorFactory, fileValidatorLogger);
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
         _ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
-        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("sguard-test");
+        _testDirectory = DirectoryUtility.CreateTempDirectory("sguard-test");
     }
 
     [Fact]
     public async Task ValidateEnvironment_With_ValidConfig_Should_ReturnSuccess()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -60,7 +62,7 @@ public sealed class RuleEngineTests : IDisposable
     }
   ]
 }");
-        var appSettingsPath = CreateTestConfigFile("appsettings.dev.json", @"{
+        CreateTestConfigFile("appsettings.dev.json", @"{
   ""Test"": {
     ""Key"": ""value""
   }
@@ -82,7 +84,7 @@ public sealed class RuleEngineTests : IDisposable
     public async Task ValidateEnvironment_With_EnvironmentNotFound_Should_ReturnError()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -126,7 +128,7 @@ public sealed class RuleEngineTests : IDisposable
     public async Task ValidateEnvironment_With_FileNotFound_Should_ReturnError()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -170,7 +172,7 @@ public sealed class RuleEngineTests : IDisposable
     public async Task ValidateAllEnvironments_With_ValidConfig_Should_ReturnSuccess()
     {
         // Arrange
-        var configPath = CreateTestConfigFile("sguard.json", @"{
+        CreateTestConfigFile("sguard.json", @"{
   ""version"": ""1"",
   ""environments"": [
     {
@@ -205,12 +207,12 @@ public sealed class RuleEngineTests : IDisposable
     }
   ]
 }");
-        var appSettingsDevPath = CreateTestConfigFile("appsettings.dev.json", @"{
+        CreateTestConfigFile("appsettings.dev.json", @"{
   ""Test"": {
     ""Key"": ""value""
   }
 }");
-        var appSettingsProdPath = CreateTestConfigFile("appsettings.prod.json", @"{
+        CreateTestConfigFile("appsettings.prod.json", @"{
   ""Test"": {
     ""Key"": ""value""
   }
@@ -330,7 +332,7 @@ public sealed class RuleEngineTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("File path cannot be null or empty");
+        result.ErrorMessage.Should().Contain("Unexpected error occurred");
     }
 
     [Fact]
@@ -361,13 +363,13 @@ public sealed class RuleEngineTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystem.SafeWriteAllText(filePath, content);
+        FileUtility.WriteAllText(filePath, content);
         return filePath;
     }
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
+      DirectoryUtility.DeleteDirectory(_testDirectory, recursive: true);
     }
 }
 

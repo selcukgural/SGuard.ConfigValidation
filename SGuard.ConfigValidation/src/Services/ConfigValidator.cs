@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Validators;
 
@@ -141,11 +141,13 @@ public sealed class ConfigValidator : IConfigValidator
                 // Validate a path format (basic validation - no file existence check)
                 var pathValidationError = ValidatePathFormat(env.Path);
 
-                if (!string.IsNullOrWhiteSpace(pathValidationError))
+                if (string.IsNullOrWhiteSpace(pathValidationError))
                 {
-                    var envIdInfo = !string.IsNullOrWhiteSpace(env.Id) ? $" (id: '{env.Id}')" : string.Empty;
-                    errors.Add(string.Format(SR.ConfigValidator_EnvironmentPathInvalidFormat, jsonPath, envIdInfo, env.Path, pathValidationError));
+                    continue;
                 }
+
+                var envIdInfo = !string.IsNullOrWhiteSpace(env.Id) ? $" (id: '{env.Id}')" : string.Empty;
+                errors.Add(string.Format(SR.ConfigValidator_EnvironmentPathInvalidFormat, jsonPath, envIdInfo, env.Path, pathValidationError));
             }
         }
 
@@ -232,12 +234,7 @@ public sealed class ConfigValidator : IConfigValidator
             }
 
             // Validate rule detail
-            if (rule.RuleDetail == null)
-            {
-                var ruleIdInfo = !string.IsNullOrWhiteSpace(rule.Id) ? $" (id: '{rule.Id}')" : string.Empty;
-                errors.Add(string.Format(SR.ConfigValidator_RuleDetailRequired, ruleJsonPath, ruleIdInfo, i));
-            }
-            else if (string.IsNullOrWhiteSpace(rule.RuleDetail.Id))
+            if (string.IsNullOrWhiteSpace(rule.RuleDetail.Id))
             {
                 var ruleIdInfo = !string.IsNullOrWhiteSpace(rule.Id) ? $" (id: '{rule.Id}')" : string.Empty;
                 errors.Add(string.Format(SR.ConfigValidator_RuleDetailIdRequired, ruleJsonPath, ruleIdInfo));
@@ -321,7 +318,7 @@ public sealed class ConfigValidator : IConfigValidator
     private bool ValidateConditions(RuleDetail ruleDetail, string ruleId, string ruleJsonPath, List<string> errors)
     {
         string ruleDetailIdInfo;
-        
+
         if (ruleDetail.Conditions.Count == 0)
         {
             ruleDetailIdInfo = !string.IsNullOrWhiteSpace(ruleDetail.Id) ? $" (rule detail id: '{ruleDetail.Id}')" : string.Empty;
@@ -336,10 +333,9 @@ public sealed class ConfigValidator : IConfigValidator
 
         ruleDetailIdInfo = !string.IsNullOrWhiteSpace(ruleDetail.Id) ? $" (rule detail id: '{ruleDetail.Id}')" : string.Empty;
 
-        errors.Add(string.Format(SR.ConfigValidator_ConditionCountExceedsLimit, ruleJsonPath, ruleDetailIdInfo, ruleId,
-                                 ruleDetail.Conditions.Count, _securityOptions.MaxConditionsPerRule,
-                                 ruleDetail.Conditions.Count - _securityOptions.MaxConditionsPerRule));
-        
+        errors.Add(string.Format(SR.ConfigValidator_ConditionCountExceedsLimit, ruleJsonPath, ruleDetailIdInfo, ruleId, ruleDetail.Conditions.Count,
+                                 _securityOptions.MaxConditionsPerRule, ruleDetail.Conditions.Count - _securityOptions.MaxConditionsPerRule));
+
         return false;
     }
 
@@ -467,13 +463,15 @@ public sealed class ConfigValidator : IConfigValidator
                     continue;
                 }
 
-                if (!environmentIdSet.Contains(envId))
+                if (environmentIdSet.Contains(envId))
                 {
-                    var ruleIndex = config.Rules.IndexOf(rule);
-                    var envIndex = rule.Environments.IndexOf(envId);
-                    var availableEnvs = string.Join(", ", environmentIdSet.OrderBy(e => e));
-                    errors.Add(string.Format(SR.ConfigValidator_RuleEnvironmentNotFound, ruleIndex, envIndex, rule.Id, envId, availableEnvs));
+                    continue;
                 }
+
+                var ruleIndex = config.Rules.IndexOf(rule);
+                var envIndex = rule.Environments.IndexOf(envId);
+                var availableEnvs = string.Join(", ", environmentIdSet.OrderBy(e => e));
+                errors.Add(string.Format(SR.ConfigValidator_RuleEnvironmentNotFound, ruleIndex, envIndex, rule.Id, envId, availableEnvs));
             }
         }
     }

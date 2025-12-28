@@ -1,10 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators;
 using Environment = SGuard.ConfigValidation.Models.Environment;
 
@@ -16,7 +17,7 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
 
     public SecurityOptionsIntegrationTests()
     {
-        _tempDirectory = SafeFileSystem.CreateSafeTempDirectory("SecurityOptionsIntegrationTests");
+        _tempDirectory = DirectoryUtility.CreateTempDirectory("SecurityOptionsIntegrationTests");
     }
 
     [Fact]
@@ -122,7 +123,7 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
         var validatorFactory = new ValidatorFactory(validatorFactoryLogger);
         var validator = new ConfigValidator(logger, securityOptions, validatorFactory);
 
-        var conditions = string.Join(",", Enumerable.Range(1, 3).Select(i => $@"{{
+        string.Join(",", Enumerable.Range(1, 3).Select(i => $@"{{
             ""key"": ""Test:Key{i}"",
             ""condition"": [{{
                 ""validator"": ""required"",
@@ -271,7 +272,7 @@ extra: '{largeContent}'";
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_tempDirectory);
+        DirectoryUtility.DeleteDirectory(_tempDirectory);
     }
 }
 

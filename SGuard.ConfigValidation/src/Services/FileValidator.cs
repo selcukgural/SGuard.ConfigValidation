@@ -30,6 +30,7 @@ public sealed class FileValidator : IFileValidator
         _validatorFactory = validatorFactory;
         _logger = logger;
     }
+
     /// <summary>
     /// Validates a configuration file against the specified rules.
     /// </summary>
@@ -103,10 +104,7 @@ public sealed class FileValidator : IFileValidator
     /// }
     /// </code>
     /// </example>
-    public FileValidationResult ValidateFile(
-        string filePath, 
-        List<Rule> applicableRules,
-        Dictionary<string, object>? appSettings)
+    public FileValidationResult ValidateFile(string filePath, List<Rule> applicableRules, Dictionary<string, object>? appSettings)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
@@ -114,125 +112,132 @@ public sealed class FileValidator : IFileValidator
             throw ArgumentException(nameof(SR.ArgumentException_FilePathRequired), nameof(filePath));
         }
 
-        if (applicableRules == null)
+        System.ArgumentNullException.ThrowIfNull(applicableRules);
+
+        if (applicableRules.Count == 0)
         {
-            _logger.LogError("File validation failed: Applicable rules are null. File path: {FilePath}", filePath);
-            throw ArgumentNullException(nameof(SR.ArgumentNullException_ApplicableRules), nameof(applicableRules), filePath);
+            _logger.LogError("File validation failed: Applicable rules list is empty. File path: {FilePath}", filePath);
+            throw ArgumentException(nameof(SR.ArgumentNullException_ApplicableRules), nameof(applicableRules), filePath);
         }
 
-        if (appSettings == null)
-        {
-            _logger.LogError("File validation failed: AppSettings are null. File path: {FilePath}", filePath);
-            throw ArgumentNullException(nameof(SR.ArgumentNullException_AppSettings), nameof(appSettings), filePath);
-        }
+        System.ArgumentNullException.ThrowIfNull(appSettings);
 
-        // Pre-allocate list capacity based on estimated number of validations
-        // Estimate: average 2-3 validations per rule, 1-2 conditions per rule
-        // Use more accurate estimation: count actual validators
-        var estimatedCapacity = applicableRules.Sum(r => 
-            r?.RuleDetail?.Conditions?.Sum(c => c?.Validators?.Count ?? 0) ?? 0);
-        var results = new List<ValidationResult>(Math.Max(estimatedCapacity, applicableRules.Count));
+        // Optimized: Single loop for both validation and capacity estimation
+        // Start with reasonable initial capacity, let List grow dynamically if needed
+        // This avoids the overhead of pre-calculating capacity with a separate loop
+        var results = new List<ValidationResult>();
 
         foreach (var rule in applicableRules)
         {
             if (rule == null)
             {
                 _logger.LogWarning("Encountered null rule during validation of file {FilePath}", filePath);
+
                 results.Add(ValidationResult.Failure(
-                    $"Validation error: Rule cannot be null. " +
-                    $"File: '{filePath}'. " +
-                    "Please ensure all rules in the configuration are properly defined.", 
-                    "system", string.Empty, null));
+                                $"Validation error: Rule cannot be null. " + $"File: '{filePath}'. " +
+                                "Please ensure all rules in the configuration are properly defined.", "system", string.Empty, null));
+
                 continue;
             }
 
-            if (rule.RuleDetail == null)
+            if (string.IsNullOrWhiteSpace(rule.Id))
             {
-                _logger.LogWarning("Rule {RuleId} has no rule detail. File: {FilePath}", rule.Id, filePath);
+                _logger.LogWarning("Encountered rule with null or empty ID during validation of file {FilePath}", filePath);
+
                 results.Add(ValidationResult.Failure(
-                    $"Validation error: Rule '{rule.Id}' has no rule detail. " +
-                    $"File: '{filePath}'. " +
-                    "The rule must have a 'rule' object containing validation conditions.", 
-                    "system", string.Empty, null));
+                                $"Validation error: Rule ID cannot be null or empty. " + $"File: '{filePath}'. " +
+                                "Please ensure all rules have a valid ID.", "system", string.Empty, null));
+
                 continue;
             }
 
-            if (rule.RuleDetail.Conditions == null)
+            if (string.IsNullOrWhiteSpace(rule.RuleDetail.Id))
+            {
+                _logger.LogWarning("Rule {RuleId} has no rule detail ID. File: {FilePath}", rule.Id, filePath);
+
+                results.Add(ValidationResult.Failure(
+                                $"Validation error: Rule '{rule.Id}' has no rule detail ID. " + $"File: '{filePath}'. " +
+                                "The rule detail must have an 'id' property.", "system", string.Empty, null));
+
+                continue;
+            }
+
+            if (rule.RuleDetail.Conditions.Count == 0)
             {
                 continue;
             }
 
             foreach (var condition in rule.RuleDetail.Conditions)
             {
-                if (condition == null)
+                var conditionResults = ValidateCondition(condition, appSettings);
+
+                // Count errors without enumeration (use single loop)
+                var errorCount = 0;
+
+                foreach (var cr in conditionResults)
                 {
-                    _logger.LogWarning("Encountered null condition in rule {RuleId}. File: {FilePath}", rule.Id, filePath);
-                    results.Add(ValidationResult.Failure(
-                        $"Validation error: Condition cannot be null. " +
-                        $"File: '{filePath}'. " +
-                        $"Rule ID: '{rule.Id}'. " +
-                        "Please ensure all conditions in the rule are properly defined.", 
-                        "system", string.Empty, null));
-                    continue;
+                    if (!cr.IsValid)
+                    {
+                        errorCount++;
+                    }
                 }
 
-                var conditionResults = ValidateCondition(condition, appSettings);
-                
-                var errorCount = conditionResults.Count(r => !r.IsValid);
                 if (errorCount > 0)
                 {
-                    _logger.LogWarning("Condition validation for key {ConditionKey} in rule {RuleId} found {ErrorCount} errors", 
-                        condition.Key, rule.Id, errorCount);
+                    _logger.LogWarning("Condition validation for key {ConditionKey} in rule {RuleId} found {ErrorCount} errors", condition.Key,
+                                       rule.Id, errorCount);
                 }
 
                 results.AddRange(conditionResults);
             }
         }
 
-        var totalErrors = results.Count(r => !r.IsValid);
-        var totalPassed = results.Count(r => r.IsValid);
+        // Create result object to use ErrorCount property (avoids multiple enumeration)
+        var result = new FileValidationResult(filePath, results);
+        var totalErrors = result.ErrorCount;
+        var totalPassed = result.Results.Count - totalErrors;
 
         if (totalErrors > 0)
         {
-            _logger.LogWarning("File validation completed for {FilePath}. Passed: {PassedCount}, Errors: {ErrorCount}", 
-                filePath, totalPassed, totalErrors);
+            _logger.LogWarning("File validation completed for {FilePath}. Passed: {PassedCount}, Errors: {ErrorCount}", filePath, totalPassed,
+                               totalErrors);
         }
         else
         {
-            _logger.LogInformation("File validation completed successfully for {FilePath}. All {TotalCount} validations passed", 
-                filePath, totalPassed);
+            _logger.LogInformation("File validation completed successfully for {FilePath}. All {TotalCount} validations passed", filePath,
+                                   totalPassed);
         }
 
-        return new FileValidationResult(filePath, results);
+        return result;
     }
 
-    private List<ValidationResult> ValidateCondition(
-        Condition condition, 
-        Dictionary<string, object> appSettings)
+    private List<ValidationResult> ValidateCondition(Condition condition, Dictionary<string, object> appSettings)
     {
         var results = new List<ValidationResult>();
-        
+
         if (string.IsNullOrWhiteSpace(condition.Key))
         {
             _logger.LogWarning("Condition key is null or empty during validation");
+
             results.Add(ValidationResult.Failure(
-                "Validation error: Condition key is required but was null or empty. " +
-                "Each condition must have a non-empty 'key' property specifying the configuration key to validate.", 
-                "system", string.Empty, null));
+                            "Validation error: Condition key is required but was null or empty. " +
+                            "Each condition must have a non-empty 'key' property specifying the configuration key to validate.", "system",
+                            string.Empty, null));
             return results;
         }
 
         if (condition.Validators.Count == 0)
         {
             _logger.LogWarning("Condition {ConditionKey} has no validators", condition.Key);
+
             results.Add(ValidationResult.Failure(
-                $"Validation error: Condition for key '{condition.Key}' has no validators. " +
-                "Each condition must have at least one validator in the 'condition' array to perform validation.", 
-                "system", condition.Key, null));
+                            $"Validation error: Condition for key '{condition.Key}' has no validators. " +
+                            "Each condition must have at least one validator in the 'condition' array to perform validation.", "system",
+                            condition.Key, null));
             return results;
         }
 
-        // Get the value from appsettings
+        // Get the value from app settings
         appSettings.TryGetValue(condition.Key, out var value);
 
         foreach (var validatorCondition in condition.Validators)
@@ -240,75 +245,75 @@ public sealed class FileValidator : IFileValidator
             if (string.IsNullOrWhiteSpace(validatorCondition.Validator))
             {
                 _logger.LogWarning("Validator type is null or empty for condition {ConditionKey}", condition.Key);
+
                 results.Add(ValidationResult.Failure(
-                    $"Validation error: Validator type is required but was null or empty. " +
-                    $"Configuration key: '{condition.Key}'. " +
-                    $"Value found: {(value == null ? "null" : $"'{value}'")}. " +
-                    "Each validator must have a non-empty 'validator' property specifying the validator type.", 
-                    "system", condition.Key, value));
+                                $"Validation error: Validator type is required but was null or empty. " + $"Configuration key: '{condition.Key}'. " +
+                                $"Value found: {(value == null ? "null" : $"'{value}'")}. " +
+                                "Each validator must have a non-empty 'validator' property specifying the validator type.", "system", condition.Key,
+                                value));
                 continue;
             }
 
             try
             {
                 var validator = _validatorFactory.GetValidator(validatorCondition.Validator);
-                
+
                 // Type-based dispatch: Check if the validator supports a value type
                 var valueTyped = TypedValue.From(value);
+
                 if (!validator.SupportedValueTypes.Contains(valueTyped.Type) && valueTyped.Type != Common.ValueType.Unknown)
                 {
-                    _logger.LogWarning("Value type {ValueType} may not be fully supported by validator {ValidatorType} for key {ConditionKey}. Supported types: {SupportedTypes}", 
+                    _logger.LogWarning(
+                        "Value type {ValueType} may not be fully supported by validator {ValidatorType} for key {ConditionKey}. Supported types: {SupportedTypes}",
                         valueTyped.Type, validatorCondition.Validator, condition.Key, string.Join(", ", validator.SupportedValueTypes));
                 }
-                
+
                 var result = validator.Validate(value, validatorCondition);
-                
-                // Add key and validator info to result
+
+                // Add key and validator info to the result
                 if (!result.IsValid)
                 {
-                    _logger.LogWarning("Validation failed for key {ConditionKey} using validator {ValidatorType}. Message: {Message}", 
-                        condition.Key, validatorCondition.Validator, result.Message);
-                    result = ValidationResult.Failure(
-                        result.Message, 
-                        validatorCondition.Validator, 
-                        condition.Key, 
-                        value);
+                    _logger.LogWarning("Validation failed for key {ConditionKey} using validator {ValidatorType}. Message: {Message}", condition.Key,
+                                       validatorCondition.Validator, result.Message);
+                    result = ValidationResult.Failure(result.Message, validatorCondition.Validator, condition.Key, value);
                 }
-                
+
                 results.Add(result);
             }
             catch (NotSupportedException ex)
             {
-                _logger.LogError(ex, "Unsupported validator type {ValidatorType} for key {ConditionKey}. Value: {Value}", 
-                    validatorCondition.Validator, condition.Key, value);
+                _logger.LogError(ex, "Unsupported validator type {ValidatorType} for key {ConditionKey}. Value: {Value}",
+                                 validatorCondition.Validator, condition.Key, value);
+
                 results.Add(ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatUnsupportedValidatorError(validatorCondition.Validator, condition.Key, value, ex),
-                    "system",
-                    condition.Key,
-                    value,
-                    ex));
+                                ValidationMessageFormatter.FormatUnsupportedValidatorError(validatorCondition.Validator, condition.Key, value, ex),
+                                "system", condition.Key, value, ex));
             }
             catch (ArgumentException ex)
             {
-                _logger.LogError(ex, "Invalid argument during validation of key {ConditionKey} with validator {ValidatorType}. Value: {Value}", 
-                    condition.Key, validatorCondition.Validator, value);
+                _logger.LogError(ex, "Invalid argument during validation of key {ConditionKey} with validator {ValidatorType}. Value: {Value}",
+                                 condition.Key, validatorCondition.Validator, value);
+
                 results.Add(ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatInvalidArgumentError(condition.Key, validatorCondition.Validator, value, ex),
-                    validatorCondition.Validator,
-                    condition.Key,
-                    value,
-                    ex));
+                                ValidationMessageFormatter.FormatInvalidArgumentError(condition.Key, validatorCondition.Validator, value, ex),
+                                validatorCondition.Validator, condition.Key, value, ex));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error during validation of key {ConditionKey} with validator {ValidatorType}. Exception type: {ExceptionType}, Value: {Value}", 
+                // Re-throw critical exceptions immediately - they indicate severe system problems
+                if (Throw.IsCriticalException(ex))
+                {
+                    throw;
+                }
+
+                _logger.LogError(
+                    ex,
+                    "Unexpected error during validation of key {ConditionKey} with validator {ValidatorType}. Exception type: {ExceptionType}, Value: {Value}",
                     condition.Key, validatorCondition.Validator, ex.GetType().Name, value);
+
                 results.Add(ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatUnexpectedValidationError(condition.Key, validatorCondition.Validator, value, ex),
-                    validatorCondition.Validator,
-                    condition.Key,
-                    value,
-                    ex));
+                                ValidationMessageFormatter.FormatUnexpectedValidationError(condition.Key, validatorCondition.Validator, value, ex),
+                                validatorCondition.Validator, condition.Key, value, ex));
             }
         }
 

@@ -95,6 +95,9 @@
   <data name="ConfigurationException_FileSizeExceedsLimit" xml:space="preserve">
     <value>Configuration loading failed: File size exceeds security limit. File: '{0}' (absolute path: '{1}'). Actual size: {2:F2} MB ({3:N0} bytes). Maximum allowed: {4:F2} MB ({5:N0} bytes). Exceeded by: {6:F2} MB. This may indicate a DoS attack attempt or corrupted file. Please verify the file integrity and reduce its size if legitimate.</value>
   </data>
+  <data name="ConfigurationException_JsonDepthExceedsLimit" xml:space="preserve">
+    <value>Configuration loading failed: JSON depth exceeds the maximum allowed depth. Current depth: {0}. Maximum allowed depth: {1}. JSON path: '{2}'. Please reduce the nesting level or increase the maximum allowed depth in security options.</value>
+  </data>
   <data name="ConfigurationException_FileEmpty" xml:space="preserve">
     <value>Configuration loading failed: File is empty. File: '{0}' (absolute path: '{1}'). The file exists but contains no content. Please ensure the file contains valid JSON or YAML configuration data.</value>
   </data>

@@ -1,10 +1,10 @@
 using System.CommandLine;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using SGuard.ConfigValidation.Common;
-using SGuard.ConfigValidation.Hooks;
 using SGuard.ConfigValidation.Output;
 using System.Runtime.InteropServices;
 using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
 
 namespace SGuard.ConfigChecker.Console;
@@ -16,7 +16,6 @@ public sealed class SGuardCli
 {
     private readonly IRuleEngine _ruleEngine;
     private readonly IConfigLoader _configLoader;
-    private readonly HookExecutor _hookExecutor;
     private readonly ILogger<SGuardCli> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IOutputFormatter _outputFormatter;
@@ -29,21 +28,18 @@ public sealed class SGuardCli
     /// </summary>
     /// <param name="ruleEngine">The rule engine service.</param>
     /// <param name="configLoader">The configuration loader service.</param>
-    /// <param name="hookExecutor">The hook executor service.</param>
     /// <param name="logger">Logger instance.</param>
     /// <param name="loggerFactory">Logger factory for creating loggers.</param>
     /// <param name="outputFormatter">Optional output formatter. Defaults to ConsoleOutputFormatter.</param>
-    public SGuardCli(IRuleEngine ruleEngine, IConfigLoader configLoader, HookExecutor hookExecutor, ILogger<SGuardCli> logger, ILoggerFactory loggerFactory, IOutputFormatter? outputFormatter = null)
+    public SGuardCli(IRuleEngine ruleEngine, IConfigLoader configLoader, ILogger<SGuardCli> logger, ILoggerFactory loggerFactory, IOutputFormatter? outputFormatter = null)
     {
         ArgumentNullException.ThrowIfNull(ruleEngine);
         ArgumentNullException.ThrowIfNull(configLoader);
-        ArgumentNullException.ThrowIfNull(hookExecutor);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(loggerFactory);
         
         _ruleEngine = ruleEngine;
         _configLoader = configLoader;
-        _hookExecutor = hookExecutor;
         _logger = logger;
         _loggerFactory = loggerFactory;
         _outputFormatter = outputFormatter ?? new ConsoleOutputFormatter(loggerFactory.CreateLogger<ConsoleOutputFormatter>());
@@ -285,18 +281,6 @@ public sealed class SGuardCli
 
             await formatter.FormatAsync(result);
 
-            // Execute hooks after validation (non-blocking, failures don't affect exit code)
-            try
-            {
-                var config = await _configLoader.LoadConfigAsync(configPath);
-                await _hookExecutor.ExecuteHooksAsync(result, config, environmentId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to execute hooks. This does not affect validation result.");
-                // Don't throw - hook failures should not affect validation
-            }
-
             var exitCode = result is { IsSuccess: true, HasValidationErrors: false } ? ExitCode.Success : ExitCode.ValidationErrors;
 
             return exitCode;
@@ -312,9 +296,44 @@ public sealed class SGuardCli
         }
     }
 
+    /// <summary>
+    /// Determines if the input string is JSON content or a file path.
+    /// Returns true if the string appears to be JSON content, false if it's a file path.
+    /// </summary>
+    /// <param name="pathOrContent">The string to check - could be a file path or JSON content.</param>
+    /// <returns>True if the string appears to be JSON content, false otherwise.</returns>
     private static bool IsJsonContent(string pathOrContent)
     {
-        return pathOrContent.StartsWith('{') || pathOrContent.Contains("\"version\"");
+        if (string.IsNullOrWhiteSpace(pathOrContent))
+        {
+            return false;
+        }
+
+        // Fast path: If it starts with '{', it's likely JSON
+        if (pathOrContent.TrimStart().StartsWith('{'))
+        {
+            return true;
+        }
+
+        // More reliable check: Try to parse as JSON to avoid false positives
+        // For example, a path like "configs/version/appsettings.json" contains "version" but isn't JSON
+        try
+        {
+            // Check if it's valid JSON by attempting to parse it
+            // Use JsonDocument.Parse which is lightweight and doesn't require full deserialization
+            using var doc = JsonDocument.Parse(pathOrContent);
+            return true;
+        }
+        catch (JsonException)
+        {
+            // Not valid JSON, treat as file path
+            return false;
+        }
+        catch (Exception)
+        {
+            // Any other exception (e.g., ArgumentException for empty string) means it's not JSON
+            return false;
+        }
     }
 
     /// <summary>

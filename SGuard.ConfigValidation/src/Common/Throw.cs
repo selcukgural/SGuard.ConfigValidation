@@ -137,6 +137,32 @@ public static class Throw
     }
     
     /// <summary>
+    /// Determines if an exception is a critical system exception that should be re-thrown immediately.
+    /// Critical exceptions indicate severe system-level problems that cannot be handled by normal error handling.
+    /// </summary>
+    /// <param name="ex">The exception to check.</param>
+    /// <returns><c>true</c> if the exception is critical and should be re-thrown; otherwise, <c>false</c>.</returns>
+    /// <remarks>
+    /// Critical exceptions include:
+    /// - <see cref="OutOfMemoryException"/>: Indicates insufficient memory
+    /// - <see cref="StackOverflowException"/>: Indicates stack overflow
+    /// - <see cref="AccessViolationException"/>: Indicates invalid memory access
+    /// - <see cref="BadImageFormatException"/>: Indicates invalid assembly format
+    /// - <see cref="InvalidProgramException"/>: Indicates invalid program execution
+    /// 
+    /// These exceptions should not be caught and handled as normal errors, as they indicate
+    /// fundamental system problems that require immediate termination or re-throwing.
+    /// </remarks>
+    public static bool IsCriticalException(Exception ex)
+    {
+        return ex is OutOfMemoryException
+            or StackOverflowException
+            or AccessViolationException
+            or BadImageFormatException
+            or InvalidProgramException;
+    }
+
+    /// <summary>
     /// Gets a resource string and formats it with the provided arguments.
     /// </summary>
     /// <param name="resourceKey">The resource key.</param>

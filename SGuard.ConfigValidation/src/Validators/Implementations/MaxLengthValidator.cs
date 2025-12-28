@@ -1,6 +1,7 @@
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators.Base;
 
 namespace SGuard.ConfigValidation.Validators;
@@ -30,7 +31,7 @@ public sealed class MaxLengthValidator : BaseValidator<object>
         if (!conditionTypedValue.TryGetInt32(out var maxLength))
         {
             // Use JsonElementHelper for backward compatibility (may throw exception)
-            maxLength = JsonElement.GetInt32(condition.Value, ValidatorType);
+            maxLength = JsonElementHelper.GetInt32(condition.Value, ValidatorType);
         }
 
         if (stringValue.Length > maxLength)

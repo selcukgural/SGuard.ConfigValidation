@@ -89,24 +89,26 @@ public sealed class ValidatorPluginDiscovery
             {
                 try
                 {
-                    if (Activator.CreateInstance(pluginType) is IValidatorPlugin plugin)
+                    if (Activator.CreateInstance(pluginType) is not IValidatorPlugin plugin)
                     {
-                        var validatorType = plugin.ValidatorType;
-                        if (string.IsNullOrWhiteSpace(validatorType))
-                        {
-                            _logger.LogWarning("Plugin {PluginType} has empty ValidatorType, skipping", pluginType.Name);
-                            continue;
-                        }
-
-                        if (validators.ContainsKey(validatorType))
-                        {
-                            _logger.LogWarning("Validator type '{ValidatorType}' is already registered, skipping plugin {PluginType}", 
-                                validatorType, pluginType.Name);
-                            continue;
-                        }
-
-                        validators[validatorType] = plugin.Validator;
+                        continue;
                     }
+
+                    var validatorType = plugin.ValidatorType;
+                    if (string.IsNullOrWhiteSpace(validatorType))
+                    {
+                        _logger.LogWarning("Plugin {PluginType} has empty ValidatorType, skipping", pluginType.Name);
+                        continue;
+                    }
+
+                    if (validators.ContainsKey(validatorType))
+                    {
+                        _logger.LogWarning("Validator type '{ValidatorType}' is already registered, skipping plugin {PluginType}", 
+                                           validatorType, pluginType.Name);
+                        continue;
+                    }
+
+                    validators[validatorType] = plugin.Validator;
                 }
                 catch (Exception ex)
                 {

@@ -36,10 +36,22 @@
       <EmbeddedResource Update="src/Resources/SR.resx">
         <LogicalName>SGuard.ConfigValidation.Resources.SR.resources</LogicalName>
       </EmbeddedResource>
+      <EmbeddedResource Remove="src\Hooks\**" />
     </ItemGroup>
 
     <ItemGroup>
       <None Include="README.md" Pack="true" PackagePath="\" />
+      <None Remove="src\Hooks\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="src\Hooks\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+        <_Parameter1>SGuard.ConfigValidation.Tests</_Parameter1>
+      </AssemblyAttribute>
     </ItemGroup>
 
 </Project>

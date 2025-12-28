@@ -8,24 +8,29 @@ namespace SGuard.ConfigValidation.Validators;
 
 public sealed class ValidatorFactory : IValidatorFactory
 {
-    // Built-in validators (always available)
-    private static readonly Dictionary<string, IValidator<object>> BuiltInValidators = 
-        new(10, StringComparer.OrdinalIgnoreCase)
-        {
-            [ValidatorConstants.Required] = new RequiredValidator(),
-            [ValidatorConstants.MinLength] = new MinLengthValidator(),
-            [ValidatorConstants.MaxLength] = new MaxLengthValidator(),
-            [ValidatorConstants.EqualsValidator] = new EqualsValidator(),
-            [ValidatorConstants.GreaterThan] = new GreaterThanValidator(),
-            [ValidatorConstants.GreaterThanOrEqual] = new GreaterThanOrEqualValidator(),
-            [ValidatorConstants.In] = new InValidator(),
-            [ValidatorConstants.LessThan] = new LessThanValidator(),
-            [ValidatorConstants.LessThanOrEqual] = new LessThanOrEqualValidator(),
-            [ValidatorConstants.NotEqual] = new NotEqualValidator()
-        };
+    /// <summary>
+    /// Dictionary containing all built-in validators that are always available in the system.
+    /// The key is the validator type name (case-insensitive), and the value is the corresponding <see cref="IValidator{T}"/> instance.
+    /// </summary>
+    /// <remarks>
+    /// This dictionary is initialized with a fixed set of validators covering common validation scenarios such as required, length, equality, comparison, and set membership.
+    /// The dictionary uses <see cref="StringComparer.OrdinalIgnoreCase"/> to allow case-insensitive lookups.
+    /// </remarks>
+    private static readonly Dictionary<string, IValidator<object>> BuiltInValidators = new(10, StringComparer.OrdinalIgnoreCase)
+    {
+        [ValidatorConstants.Required] = new RequiredValidator(),
+        [ValidatorConstants.MinLength] = new MinLengthValidator(),
+        [ValidatorConstants.MaxLength] = new MaxLengthValidator(),
+        [ValidatorConstants.EqualsValidator] = new EqualsValidator(),
+        [ValidatorConstants.GreaterThan] = new GreaterThanValidator(),
+        [ValidatorConstants.GreaterThanOrEqual] = new GreaterThanOrEqualValidator(),
+        [ValidatorConstants.In] = new InValidator(),
+        [ValidatorConstants.LessThan] = new LessThanValidator(),
+        [ValidatorConstants.LessThanOrEqual] = new LessThanOrEqualValidator(),
+        [ValidatorConstants.NotEqual] = new NotEqualValidator()
+    };
 
     private readonly ReadOnlyDictionary<string, IValidator<object>> _validators;
-    private readonly IReadOnlyList<string> _supportedValidatorsList;
     private readonly string _supportedValidatorsString;
 
     /// <summary>
@@ -34,7 +39,8 @@ public sealed class ValidatorFactory : IValidatorFactory
     /// <param name="logger">Logger instance.</param>
     /// <param name="pluginDiscovery">Optional plugin discovery service. If provided, plugins will be discovered.</param>
     /// <param name="pluginDirectories">Optional list of directories to scan for validator plugins.</param>
-    public ValidatorFactory(ILogger<ValidatorFactory> logger, ValidatorPluginDiscovery? pluginDiscovery = null, IEnumerable<string>? pluginDirectories = null)
+    public ValidatorFactory(ILogger<ValidatorFactory> logger, ValidatorPluginDiscovery? pluginDiscovery = null,
+                            IEnumerable<string>? pluginDirectories = null)
     {
         System.ArgumentNullException.ThrowIfNull(logger);
 
@@ -45,7 +51,7 @@ public sealed class ValidatorFactory : IValidatorFactory
         if (pluginDiscovery != null && pluginDirectories != null)
         {
             var pluginValidators = pluginDiscovery.DiscoverValidators(pluginDirectories);
-            
+
             foreach (var pluginValidator in pluginValidators)
             {
                 if (validators.ContainsKey(pluginValidator.Key))
@@ -60,8 +66,7 @@ public sealed class ValidatorFactory : IValidatorFactory
         }
 
         _validators = new ReadOnlyDictionary<string, IValidator<object>>(validators);
-        _supportedValidatorsList = _validators.Keys.ToArray();
-        _supportedValidatorsString = string.Join(", ", _supportedValidatorsList);
+        _supportedValidatorsString = string.Join(", ", _validators.Keys);
     }
 
     /// <summary>
@@ -101,20 +106,17 @@ public sealed class ValidatorFactory : IValidatorFactory
     public IValidator<object> GetValidator(string validatorType)
     {
         System.ArgumentNullException.ThrowIfNull(validatorType);
-        
+
         // Fast path: direct lookup with an optimized exception message
-        if (_validators.TryGetValue(validatorType, out var validator))
-        {
-            return validator;
-        }
-        
-        // Slow path: throw an exception with a cached message
-        throw NotSupportedException(nameof(SR.NotSupportedException_ValidatorTypeNotSupported), validatorType, _supportedValidatorsString);
+        return _validators.TryGetValue(validatorType, out var validator)
+                   ? validator
+                   // Slow path: throw an exception with a cached message
+                   : throw NotSupportedException(nameof(SR.NotSupportedException_ValidatorTypeNotSupported), validatorType, _supportedValidatorsString);
     }
 
     /// <summary>
     /// Gets the list of supported validator types.
     /// </summary>
     /// <returns>An enumerable of supported validator type names (e.g., "required", "eq", "gt").</returns>
-    public IEnumerable<string> GetSupportedValidators() => _supportedValidatorsList;
+    public IEnumerable<string> GetSupportedValidators() => _validators.Keys;
 }

@@ -1,6 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
-using SGuard.ConfigValidation.Common;
+using SGuard.ConfigValidation.Security;
 
 namespace SGuard.ConfigValidation.Tests;
 

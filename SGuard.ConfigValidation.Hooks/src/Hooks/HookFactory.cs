@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 
 namespace SGuard.ConfigValidation.Hooks;
@@ -10,18 +11,22 @@ public sealed class HookFactory
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly SecurityOptions _securityOptions;
 
     /// <summary>
     /// Initializes a new instance of the HookFactory class.
     /// </summary>
     /// <param name="loggerFactory">Logger factory instance.</param>
+    /// <param name="securityOptions">Security options for configuring security limits.</param>
     /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances. If not provided, a new HttpClient will be created for each webhook hook (not recommended for production).</param>
-    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="loggerFactory"/> is null.</exception>
-    public HookFactory(ILoggerFactory loggerFactory, IHttpClientFactory? httpClientFactory = null)
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="loggerFactory"/> or <paramref name="securityOptions"/> is null.</exception>
+    public HookFactory(ILoggerFactory loggerFactory, SecurityOptions securityOptions, IHttpClientFactory? httpClientFactory = null)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentNullException.ThrowIfNull(securityOptions);
 
         _loggerFactory = loggerFactory;
+        _securityOptions = securityOptions;
         _httpClientFactory = httpClientFactory;
     }
 
@@ -60,7 +65,7 @@ public sealed class HookFactory
         {
             return new ScriptHook(config.Command, config.Arguments ?? [], config.WorkingDirectory,
                                   config.EnvironmentVariables ?? new Dictionary<string, string>(), config.Timeout ?? 30000, // Default 30 seconds
-                                  _loggerFactory.CreateLogger<ScriptHook>());
+                                  _securityOptions, _loggerFactory.CreateLogger<ScriptHook>());
         }
 
         _loggerFactory.CreateLogger<HookFactory>().LogWarning("Script hook configuration missing 'command' property");

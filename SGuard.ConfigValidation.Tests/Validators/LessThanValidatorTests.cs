@@ -326,4 +326,56 @@ public sealed class LessThanValidatorTests
         result.Message.Should().Contain("Value for 'lt' validator must be comparable");
         result.ValidatorType.Should().Be("lt");
     }
+
+    [Fact]
+    public void Validate_With_NullConditionValue_Should_Fail_WithProperError()
+    {
+        // Arrange
+        var condition = new ValidatorCondition
+        {
+            Validator = "lt",
+            Value = null,
+            Message = "Value must be less than threshold"
+        };
+
+        // Act
+        var result = _validator.Validate(10, condition);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Message.Should().Contain("Value for 'lt' validator must be comparable");
+        result.Message.Should().Contain("Expected value type: null");
+        result.ValidatorType.Should().Be("lt");
+    }
+
+    [Fact]
+    public void Validate_With_StringNumericComparison_Should_Work()
+    {
+        // Arrange
+        var condition = new ValidatorCondition
+        {
+            Validator = "lt",
+            Value = "10",
+            Message = "Value must be less than threshold"
+        };
+
+        // Act
+        var result1 = _validator.Validate(5, condition);
+        var result2 = _validator.Validate(15, condition);
+        var result3 = _validator.Validate("5", condition);
+        var result4 = _validator.Validate("15", condition);
+
+        // Assert
+        result1.IsValid.Should().BeTrue();
+        result1.Message.Should().BeEmpty();
+
+        result2.IsValid.Should().BeFalse();
+        result2.Message.Should().Contain("Value must be less than threshold");
+
+        result3.IsValid.Should().BeTrue();
+        result3.Message.Should().BeEmpty();
+
+        result4.IsValid.Should().BeFalse();
+        result4.Message.Should().Contain("Value must be less than threshold");
+    }
 }

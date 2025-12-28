@@ -2,9 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Exceptions;
+using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
+using SGuard.ConfigValidation.Utils;
 
 namespace SGuard.ConfigValidation.Tests;
 
@@ -12,14 +13,13 @@ public sealed class ConfigLoaderTests : IDisposable
 {
     private readonly ConfigLoader _loader;
     private readonly string _testDirectory;
-    private readonly ILogger<ConfigLoader> _logger;
 
     public ConfigLoaderTests()
     {
-        _logger = NullLogger<ConfigLoader>.Instance;
+      ILogger<ConfigLoader> logger = NullLogger<ConfigLoader>.Instance;
         var securityOptions = Options.Create(new SecurityOptions());
-        _loader = new ConfigLoader(_logger, securityOptions);
-        _testDirectory = SafeFileSystem.CreateSafeTempDirectory("configloader-test");
+        _loader = new ConfigLoader(logger, securityOptions);
+        _testDirectory = DirectoryUtility.CreateTempDirectory("configloader-test");
     }
 
     [Fact]
@@ -76,8 +76,9 @@ public sealed class ConfigLoaderTests : IDisposable
         var nonExistentPath = Path.Combine(_testDirectory, "nonexistent.json");
 
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<FileNotFoundException>(async () => await _loader.LoadConfigAsync(nonExistentPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await _loader.LoadConfigAsync(nonExistentPath));
         exception.Message.Should().Contain("nonexistent.json");
+        exception.InnerException.Should().BeOfType<FileNotFoundException>();
     }
 
     [Fact]
@@ -111,7 +112,7 @@ public sealed class ConfigLoaderTests : IDisposable
     public async Task LoadConfig_With_SchemaValidation_And_ValidConfig_Should_Return_Config()
     {
         // Arrange
-        var schemaPath = CreateTestConfigFile("sguard.schema.json", @"{
+        CreateTestConfigFile("sguard.schema.json", @"{
   ""$schema"": ""https://json-schema.org/draft/2020-12/schema"",
   ""type"": ""object"",
   ""required"": [""version"", ""environments"", ""rules""],
@@ -168,7 +169,7 @@ public sealed class ConfigLoaderTests : IDisposable
     public async Task LoadConfig_With_SchemaValidation_And_InvalidConfig_Should_Throw_ConfigurationException()
     {
         // Arrange
-        var schemaPath = CreateTestConfigFile("sguard.schema.json", @"{
+        CreateTestConfigFile("sguard.schema.json", @"{
   ""$schema"": ""https://json-schema.org/draft/2020-12/schema"",
   ""type"": ""object"",
   ""required"": [""version"", ""environments"", ""rules""],
@@ -244,7 +245,7 @@ public sealed class ConfigLoaderTests : IDisposable
     private string CreateTestConfigFile(string fileName, string content)
     {
         var filePath = Path.Combine(_testDirectory, fileName);
-        SafeFileSystem.SafeWriteAllText(filePath, content);
+        FileUtility.WriteAllText(filePath, content);
         return filePath;
     }
 
@@ -313,6 +314,6 @@ Logging:
 
     public void Dispose()
     {
-        SafeFileSystem.SafeDeleteDirectory(_testDirectory, recursive: true);
+        DirectoryUtility.DeleteDirectory(_testDirectory, recursive: true);
     }
 }
