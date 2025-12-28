@@ -244,7 +244,7 @@ public sealed class SecurityOptionsIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void YamlLoader_With_CustomSecurityOptions_Should_Enforce_MaxFileSizeLimit()
+    public async Task YamlLoader_With_CustomSecurityOptions_Should_Enforce_MaxFileSizeLimit()
     {
         // Arrange
         var securityOptions = Options.Create(new SecurityOptions
@@ -264,8 +264,8 @@ extra: '{largeContent}'";
         File.WriteAllText(yamlPath, yamlContent);
 
         // Act & Assert
-        var action = () => loader.LoadConfig(yamlPath);
-        action.Should().Throw<ConfigurationException>()
+        var action = async () => await loader.LoadConfigAsync(yamlPath);
+        await action.Should().ThrowAsync<ConfigurationException>()
             .WithMessage("*exceeds security limit*");
     }
 

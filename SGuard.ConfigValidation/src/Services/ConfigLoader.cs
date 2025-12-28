@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -6,6 +7,7 @@ using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Services.Abstract;
+using SGuard.ConfigValidation.Telemetry;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 using JsonElement = System.Text.Json.JsonElement;
@@ -45,14 +47,15 @@ public sealed class ConfigLoader : IConfigLoader
     }
 
         /// <summary>
-        /// Loads the SGuard configuration from the specified file path.
+        /// Loads the SGuard configuration from the specified file path asynchronously.
         /// Supports both JSON (default) and YAML files (if the YAML loader is provided).
         /// JSON is the default format for configuration files like `sguard.json`.
         /// Validates the configuration against a schema if a schema validator is provided.
         /// Validates the configuration structure if a config validator is provided.
         /// </summary>
         /// <param name="configPath">The path to the configuration file (JSON or YAML). JSON is the default format.</param>
-        /// <returns>The loaded and validated <see cref="SGuardConfig"/> instance.</returns>
+        /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the loaded and validated <see cref="SGuardConfig"/> instance.</returns>
         /// <exception cref="System.ArgumentException">Thrown when <paramref name="configPath"/> is null or empty.</exception>
         /// <exception cref="System.IO.FileNotFoundException">Thrown when the configuration file does not exist.</exception>
         /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the configuration file is invalid, empty, malformed, fails schema validation, or fails structure validation.</exception>
@@ -86,28 +89,31 @@ public sealed class ConfigLoader : IConfigLoader
         /// }
         /// </code>
         /// </example>
-        public async Task<SGuardConfig> LoadConfigAsync(string configPath)
+        public async Task<SGuardConfig> LoadConfigAsync(string configPath, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(configPath))
-            {
-                _logger.LogError("Configuration file path is null or empty");
-                throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(configPath));
-            }
-
-            FileSecurity.EnsureFileExists(configPath, nameof(SR.ConfigurationException_FileNotFound), _logger);
-
-            // Check if a file is YAML
-            if (IsYamlFile(configPath) && _yamlLoader != null)
-            {
-                return _yamlLoader.LoadConfig(configPath);
-            }
-
+            var stopwatch = Stopwatch.StartNew();
             try
             {
+                if (string.IsNullOrWhiteSpace(configPath))
+                {
+                    _logger.LogError("Configuration file path is null or empty");
+                    throw ArgumentException(nameof(SR.ArgumentException_ConfigPathNullOrEmpty), nameof(configPath));
+                }
+
+                FileSecurity.EnsureFileExists(configPath, nameof(SR.ConfigurationException_FileNotFound), _logger);
+
+                // Check if a file is YAML
+                if (IsYamlFile(configPath) && _yamlLoader != null)
+                {
+                    var result = await _yamlLoader.LoadConfigAsync(configPath, cancellationToken).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
+                    return result;
+                }
                 // Check file size before reading to prevent DoS attacks
                 FileSecurity.ValidateFileSize(configPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_FileSizeExceedsLimit));
 
-                var json = SafeFileSystem.SafeReadAllText(configPath);
+                var json = await SafeFileSystem.SafeReadAllTextAsync(configPath, cancellationToken).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
@@ -123,7 +129,7 @@ public sealed class ConfigLoader : IConfigLoader
                     if (SafeFileSystem.FileExists(schemaPath))
                     {
                         _logger.LogInformation("Validating configuration against schema {SchemaPath}", schemaPath);
-                        var schemaValidationResult = await _schemaValidator.ValidateAgainstFileAsync(json, schemaPath);
+                        var schemaValidationResult = await _schemaValidator.ValidateAgainstFileAsync(json, schemaPath, cancellationToken).ConfigureAwait(false);
                         
                         if (!schemaValidationResult.IsValid)
                         {
@@ -228,13 +234,14 @@ public sealed class ConfigLoader : IConfigLoader
         }
 
         /// <summary>
-        /// Loads app settings from the specified file path and flattens them into a dictionary.
+        /// Loads app settings from the specified file path and flattens them into a dictionary asynchronously.
         /// Supports both JSON (default) and YAML files (if the YAML loader is provided).
         /// JSON is the default format for app settings files like `appsettings.json`.
         /// Nested JSON objects are flattened with colon-separated keys (e.g., "Logging:LogLevel:Default").
         /// </summary>
         /// <param name="appSettingsPath">The path to the app settings file (JSON or YAML). JSON is the default format.</param>
-        /// <returns>A dictionary containing flattened app settings with colon-separated keys.</returns>
+        /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a dictionary with flattened app settings with colon-separated keys.</returns>
         /// <exception cref="System.ArgumentException">Thrown when <paramref name="appSettingsPath"/> is null or empty.</exception>
         /// <exception cref="System.IO.FileNotFoundException">Thrown when the app settings file does not exist.</exception>
         /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the app settings file is invalid or cannot be deserialized.</exception>
@@ -277,24 +284,27 @@ public sealed class ConfigLoader : IConfigLoader
         /// }
         /// </code>
         /// </example>
-        public Dictionary<string, object> LoadAppSettings(string appSettingsPath)
+        public async Task<Dictionary<string, object>> LoadAppSettingsAsync(string appSettingsPath, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(appSettingsPath))
-            {
-                _logger.LogError("AppSettings file path is null or empty");
-                throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(appSettingsPath));
-            }
-
-            FileSecurity.EnsureFileExists(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
-
-            // Check if a file is YAML
-            if (IsYamlFile(appSettingsPath) && _yamlLoader != null)
-            {
-                return _yamlLoader.LoadAppSettings(appSettingsPath);
-            }
-
+            var stopwatch = Stopwatch.StartNew();
             try
             {
+                if (string.IsNullOrWhiteSpace(appSettingsPath))
+                {
+                    _logger.LogError("AppSettings file path is null or empty");
+                    throw ArgumentException(nameof(SR.ArgumentException_AppSettingsPathNullOrEmpty), nameof(appSettingsPath));
+                }
+
+                FileSecurity.EnsureFileExists(appSettingsPath, nameof(SR.ConfigurationException_AppSettingsFileNotFound), _logger);
+
+                // Check if a file is YAML
+                if (IsYamlFile(appSettingsPath) && _yamlLoader != null)
+                {
+                    var result = await _yamlLoader.LoadAppSettingsAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
+                    stopwatch.Stop();
+                    ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
+                    return result;
+                }
                 // Check file size before reading to prevent DoS attacks
                 FileSecurity.ValidateFileSize(appSettingsPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
@@ -304,10 +314,10 @@ public sealed class ConfigLoader : IConfigLoader
 
                 if (useStreaming)
                 {
-                    return LoadAppSettingsStreaming(appSettingsPath);
+                    return await LoadAppSettingsStreamingAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
                 }
 
-                var json = SafeFileSystem.SafeReadAllText(appSettingsPath);
+                var json = await SafeFileSystem.SafeReadAllTextAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
                 
                 if (string.IsNullOrWhiteSpace(json))
                 {
@@ -330,10 +340,14 @@ public sealed class ConfigLoader : IConfigLoader
                 _logger.LogInformation("App settings loaded successfully from {AppSettingsPath}. Found {SettingCount} settings", 
                     appSettingsPath, appSettings.Count);
 
+                stopwatch.Stop();
+                ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
                 return appSettings;
             }
             catch (JsonException ex)
             {
+                stopwatch.Stop();
+                ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
                 var lineNumber = ex.LineNumber > 0 ? $"Line {ex.BytePositionInLine / 1024 + 1}" : "unknown line";
                 _logger.LogError(ex, "Invalid JSON format in AppSettings file {AppSettingsPath}. Error at {LineNumber}: {ErrorMessage}", 
                     appSettingsPath, lineNumber, ex.Message);
@@ -343,6 +357,8 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (IOException ex)
             {
+                stopwatch.Stop();
+                ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
                 _logger.LogError(ex, "I/O error reading AppSettings file {AppSettingsPath}. Error: {ErrorMessage}", appSettingsPath, ex.Message);
                 
                 throw ConfigurationException(nameof(SR.ConfigurationException_AppSettingsIOException), ex, 
@@ -350,6 +366,8 @@ public sealed class ConfigLoader : IConfigLoader
             }
             catch (Exception ex)
             {
+                stopwatch.Stop();
+                ValidationMetrics.RecordFileLoadingDuration(stopwatch.ElapsedMilliseconds);
                 _logger.LogError(ex, "Unexpected error loading app settings from {AppSettingsPath}. Exception type: {ExceptionType}, Message: {ErrorMessage}", 
                     appSettingsPath, ex.GetType().Name, ex.Message);
                 
@@ -362,7 +380,7 @@ public sealed class ConfigLoader : IConfigLoader
         /// Loads app settings using streaming JSON reader for large files.
         /// Uses FileStream with optimized buffer size for better memory efficiency.
         /// </summary>
-        private Dictionary<string, object> LoadAppSettingsStreaming(string appSettingsPath)
+        private async Task<Dictionary<string, object>> LoadAppSettingsStreamingAsync(string appSettingsPath, CancellationToken cancellationToken = default)
         {
             // Pre-allocate dictionary with estimated capacity
             var estimatedCapacity = (int)Math.Min(
@@ -377,9 +395,9 @@ public sealed class ConfigLoader : IConfigLoader
                 FileAccess.Read, 
                 FileShare.Read, 
                 bufferSize: SharedConstants.FileStreamBufferSize, 
-                useAsync: false);
+                useAsync: true);
             
-            using var document = JsonDocument.Parse(fileStream, JsonOptions.Document);
+            using var document = await JsonDocument.ParseAsync(fileStream, JsonOptions.Document, cancellationToken).ConfigureAwait(false);
             
             FlattenJson(document.RootElement, "", appSettings);
             

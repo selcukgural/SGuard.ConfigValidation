@@ -101,7 +101,7 @@ public class BenchmarkTests
     [Benchmark]
     public Dictionary<string, object> LoadAppSettings_LargeFile()
     {
-        return _configLoader.LoadAppSettings(_largeJsonFile);
+        return _configLoader.LoadAppSettingsAsync(_largeJsonFile).GetAwaiter().GetResult();
     }
 
     [Benchmark]

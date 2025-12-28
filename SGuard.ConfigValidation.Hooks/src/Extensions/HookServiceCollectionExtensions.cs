@@ -34,10 +34,13 @@ public static class HookServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Register HookFactory
+        // Note: IHttpClientFactory should be registered via services.AddHttpClient() before calling AddSGuardHooks()
+        // If IHttpClientFactory is not registered, HookFactory will fall back to creating new HttpClient instances
         services.TryAddSingleton<HookFactory>(serviceProvider =>
         {
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            return new HookFactory(loggerFactory);
+            var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+            return new HookFactory(loggerFactory, httpClientFactory);
         });
 
         // Register HookExecutor

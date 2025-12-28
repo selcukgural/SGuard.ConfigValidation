@@ -26,7 +26,7 @@ public sealed class PerformanceTests : IDisposable
     }
 
     [Fact]
-    public void LoadAppSettings_With_LargeFile_Should_Complete_Within_Reasonable_Time()
+    public async Task LoadAppSettings_With_LargeFile_Should_Complete_Within_Reasonable_Time()
     {
         // Arrange
         var largeJson = GenerateLargeJson(10000); // 10K keys
@@ -39,7 +39,7 @@ public sealed class PerformanceTests : IDisposable
 
         // Act
         var stopwatch = Stopwatch.StartNew();
-        var result = configLoader.LoadAppSettings(filePath);
+        var result = await configLoader.LoadAppSettingsAsync(filePath);
         stopwatch.Stop();
 
         // Assert
@@ -52,7 +52,7 @@ public sealed class PerformanceTests : IDisposable
     }
 
     [Fact]
-    public void LoadAppSettings_With_VeryLargeFile_Should_Use_Streaming()
+    public async Task LoadAppSettings_With_VeryLargeFile_Should_Use_Streaming()
     {
         // Arrange - Create a file larger than 1MB to trigger streaming
         var largeJson = GenerateLargeJson(50000); // 50K keys (should be > 1MB)
@@ -68,7 +68,7 @@ public sealed class PerformanceTests : IDisposable
 
         // Act
         var stopwatch = Stopwatch.StartNew();
-        var result = configLoader.LoadAppSettings(filePath);
+        var result = await configLoader.LoadAppSettingsAsync(filePath);
         stopwatch.Stop();
 
         // Assert

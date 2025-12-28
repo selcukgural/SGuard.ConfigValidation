@@ -81,7 +81,7 @@ public sealed class ConfigLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadAppSettings_With_ValidFile_Should_Return_Dictionary()
+    public async Task LoadAppSettings_With_ValidFile_Should_Return_Dictionary()
     {
         // Arrange
         var configPath = CreateTestConfigFile("appsettings.json", @"{
@@ -95,7 +95,7 @@ public sealed class ConfigLoaderTests : IDisposable
 }");
 
         // Act
-        var appSettings = _loader.LoadAppSettings(configPath);
+        var appSettings = await _loader.LoadAppSettingsAsync(configPath);
 
         // Assert
         appSettings.Should().HaveCount(3); // ConnectionStrings:DefaultConnection, ConnectionStrings:DefaultConnection, AllowedHosts
@@ -287,7 +287,7 @@ rules:
     }
 
     [Fact]
-    public void LoadAppSettings_With_YamlFile_Should_UseYamlLoader()
+    public async Task LoadAppSettings_With_YamlFile_Should_UseYamlLoader()
     {
         // Arrange
         var yamlPath = CreateTestConfigFile("appsettings.yaml", @"
@@ -303,7 +303,7 @@ Logging:
         var loader = new ConfigLoader(logger, securityOptions, yamlLoader: yamlLoader);
 
         // Act
-        var appSettings = loader.LoadAppSettings(yamlPath);
+        var appSettings = await loader.LoadAppSettingsAsync(yamlPath);
 
         // Assert
         appSettings.Should().HaveCount(2);

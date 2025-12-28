@@ -378,6 +378,69 @@ public static class SafeFileSystem
     }
 
     /// <summary>
+    /// Safely reads all text from a file asynchronously with proper error handling.
+    /// Includes path traversal and symlink validation, and file permissions check.
+    /// </summary>
+    /// <param name="filePath">The path to the file.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
+    /// <param name="basePath">Optional base path for path traversal validation. If provided, the file path must be within the base directory.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the content of the file.</returns>
+    /// <exception cref="System.ArgumentException">Thrown when filePath is null or empty.</exception>
+    /// <exception cref="System.IO.FileNotFoundException">Thrown when a file does not exist.</exception>
+    /// <exception cref="System.UnauthorizedAccessException">Thrown when unable to read due to permissions, path traversal detected, or symlink attack detected.</exception>
+    public static async Task<string> SafeReadAllTextAsync(string filePath, CancellationToken cancellationToken = default, string? basePath = null)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            throw ArgumentException(nameof(SR.ArgumentException_FilePathNullOrEmpty), nameof(filePath));
+        }
+
+        // Validate path traversal if a base path is provided
+        if (!string.IsNullOrWhiteSpace(basePath))
+        {
+            var resolvedPath = Path.GetFullPath(filePath);
+            var baseDirectory = Path.GetDirectoryName(Path.GetFullPath(basePath));
+            if (!string.IsNullOrWhiteSpace(baseDirectory))
+            {
+                PathSecurity.ValidateResolvedPath(resolvedPath, basePath);
+            }
+        }
+
+        // Validate symlink if a base path is provided
+        if (!string.IsNullOrWhiteSpace(basePath) && PathSecurity.IsSymlink(filePath))
+        {
+            PathSecurity.ValidateSymlink(filePath, basePath);
+        }
+
+        var fullPath = Path.GetFullPath(filePath);
+        if (!File.Exists(fullPath))
+        {
+            throw FileNotFoundException(filePath, nameof(SR.FileNotFoundException_FileNotFound), filePath, fullPath);
+        }
+
+        // Check file read permissions
+        if (!CanReadFile(fullPath))
+        {
+            throw UnauthorizedAccessException(nameof(SR.UnauthorizedAccessException_InsufficientReadPermissions), 
+                filePath, fullPath);
+        }
+
+        try
+        {
+            return await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            throw FileNotFoundException(filePath, nameof(SR.FileNotFoundException_DirectoryNotFound), filePath, fullPath, ex.Message);
+        }
+        catch (IOException ex)
+        {
+            throw InvalidOperationException(nameof(SR.InvalidOperationException_FileWriteUnexpectedError), ex, 
+                filePath, fullPath, ex.GetType().Name, ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Safely checks if a file exists.
     /// Includes path traversal validation if a base path is provided.
     /// </summary>

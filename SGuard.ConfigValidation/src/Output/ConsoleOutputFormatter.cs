@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Results;
 

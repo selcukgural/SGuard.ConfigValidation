@@ -1,8 +1,8 @@
-using System.Net.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Hooks.Implementations;
-using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Hooks;
 
@@ -12,16 +12,23 @@ namespace SGuard.ConfigValidation.Hooks;
 public sealed class HookFactory
 {
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly SecurityOptions _securityOptions;
 
     /// <summary>
     /// Initializes a new instance of the HookFactory class.
     /// </summary>
     /// <param name="loggerFactory">Logger factory instance.</param>
-    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="loggerFactory"/> is null.</exception>
-    public HookFactory(ILoggerFactory loggerFactory)
+    /// <param name="securityOptions">Security options for buffer size limits and other security settings.</param>
+    /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances. If not provided, a new HttpClient will be created for each webhook hook (not recommended for production).</param>
+    /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="loggerFactory"/> or <paramref name="securityOptions"/> is null.</exception>
+    public HookFactory(ILoggerFactory loggerFactory, IOptions<SecurityOptions> securityOptions, IHttpClientFactory? httpClientFactory = null)
     {
         System.ArgumentNullException.ThrowIfNull(loggerFactory);
+        System.ArgumentNullException.ThrowIfNull(securityOptions);
         _loggerFactory = loggerFactory;
+        _securityOptions = securityOptions.Value;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -67,7 +74,8 @@ public sealed class HookFactory
             config.WorkingDirectory,
             config.EnvironmentVariables ?? new Dictionary<string, string>(),
             config.Timeout ?? 30000, // Default 30 seconds
-            _loggerFactory.CreateLogger<ScriptHook>());
+            _loggerFactory.CreateLogger<ScriptHook>(),
+            _securityOptions);
     }
 
     /// <summary>
@@ -81,15 +89,32 @@ public sealed class HookFactory
             return null;
         }
 
-        var httpClient = new System.Net.Http.HttpClient();
+        // Use IHttpClientFactory if available, otherwise create a new HttpClient (fallback for backward compatibility)
+        HttpClient httpClient;
+        if (_httpClientFactory != null)
+        {
+            httpClient = _httpClientFactory.CreateClient();
+        }
+        else
+        {
+            _loggerFactory.CreateLogger<HookFactory>().LogWarning(
+                "IHttpClientFactory is not available. Creating a new HttpClient for webhook hook. " +
+                "This may lead to socket exhaustion in production. Consider registering IHttpClientFactory in DI container.");
+            httpClient = new HttpClient();
+        }
+
         var method = string.IsNullOrWhiteSpace(config.Method) ? "POST" : config.Method.ToUpperInvariant();
+        var timeout = config.Timeout ?? 10000; // Default 10 seconds
+
+        // Set timeout on HttpClient
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
 
         return new WebhookHook(
             config.Url,
             method,
             config.Headers ?? new Dictionary<string, string>(),
             config.Body,
-            config.Timeout ?? 10000, // Default 10 seconds
+            timeout,
             httpClient,
             _loggerFactory.CreateLogger<WebhookHook>());
     }

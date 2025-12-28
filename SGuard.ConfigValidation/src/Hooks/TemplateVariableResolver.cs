@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Results;

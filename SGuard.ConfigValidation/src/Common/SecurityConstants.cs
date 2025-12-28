@@ -56,6 +56,19 @@ public static class SecurityConstants
     /// </summary>
     public const int MaxJsonDepth = 64;
 
+    /// <summary>
+    /// Default maximum number of environments that can be validated in parallel.
+    /// Defaults to the number of processor cores available.
+    /// Prevents resource exhaustion from excessive parallelization.
+    /// </summary>
+    public static int MaxParallelEnvironments => System.Environment.ProcessorCount;
+
+    /// <summary>
+    /// Default maximum script output size in bytes (1 MB).
+    /// Script hooks output exceeding this limit will be truncated to prevent DoS attacks.
+    /// </summary>
+    public const long MaxScriptOutputSizeBytes = 1024 * 1024; // 1 MB
+
     // Hard limits (absolute maximums cannot be exceeded even via configuration)
     
     /// <summary>
@@ -108,5 +121,19 @@ public static class SecurityConstants
     /// Prevents stack overflow attacks through extremely deeply nested structures.
     /// </summary>
     public const int MaxJsonDepthHardLimit = 256;
+
+    /// <summary>
+    /// Hard limit for the maximum number of environments that can be validated in parallel (100).
+    /// This is the absolute maximum that cannot be exceeded even if configured higher.
+    /// Prevents resource exhaustion from excessive parallelization.
+    /// </summary>
+    public const int MaxParallelEnvironmentsHardLimit = 100;
+
+    /// <summary>
+    /// Hard limit for maximum script output size in bytes (10 MB).
+    /// This is the absolute maximum that cannot be exceeded even if configured higher.
+    /// Prevents DoS attacks through extremely large script outputs.
+    /// </summary>
+    public const long MaxScriptOutputSizeBytesHardLimit = 10 * 1024 * 1024; // 10 MB
 }
 

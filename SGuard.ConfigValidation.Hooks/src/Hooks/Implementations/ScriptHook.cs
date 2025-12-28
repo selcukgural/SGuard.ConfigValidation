@@ -96,61 +96,112 @@ public sealed class ScriptHook : IHook
                 processStartInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
             }
 
-            using var process = new Process();
-            process.StartInfo = processStartInfo;
+            Process? process = null;
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
 
-            process.OutputDataReceived += (_, e) =>
+            try
             {
-                if (e.Data != null)
+                process = new Process { StartInfo = processStartInfo };
+
+                process.OutputDataReceived += (_, e) =>
                 {
-                    outputBuilder.AppendLine(e.Data);
-                }
-            };
+                    if (e.Data != null)
+                    {
+                        outputBuilder.AppendLine(e.Data);
+                    }
+                };
 
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (e.Data != null)
+                process.ErrorDataReceived += (_, e) =>
                 {
-                    errorBuilder.AppendLine(e.Data);
+                    if (e.Data != null)
+                    {
+                        errorBuilder.AppendLine(e.Data);
+                    }
+                };
+
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                // Wait for completion with timeout
+                var completed = await Task.Run(() => process.WaitForExit(_timeout), cancellationToken);
+
+                if (!completed)
+                {
+                    try
+                    {
+                        process.Kill();
+                        _logger.LogWarning("Script hook execution timed out after {Timeout}ms: {Command}", 
+                            _timeout, resolvedCommand);
+                    }
+                    catch (Exception killEx)
+                    {
+                        _logger.LogWarning(killEx, "Error killing process after timeout: {Command}", resolvedCommand);
+                    }
+                    return;
                 }
-            };
 
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+                var output = outputBuilder.ToString();
+                var error = errorBuilder.ToString();
 
-            // Wait for completion with timeout
-            var completed = await Task.Run(() => process.WaitForExit(_timeout), cancellationToken);
-
-            if (!completed)
-            {
-                process.Kill();
-                _logger.LogWarning("Script hook execution timed out after {Timeout}ms: {Command}", 
-                    _timeout, resolvedCommand);
-                return;
+                if (process.ExitCode == 0)
+                {
+                    _logger.LogInformation("Script hook executed successfully: {Command}. Exit code: {ExitCode}", 
+                        resolvedCommand, process.ExitCode);
+                    if (!string.IsNullOrWhiteSpace(output))
+                    {
+                        _logger.LogDebug("Script output: {Output}", output);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Script hook execution failed: {Command}. Exit code: {ExitCode}", 
+                        resolvedCommand, process.ExitCode);
+                    if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        _logger.LogWarning("Script error output: {Error}", error);
+                    }
+                }
             }
-
-            var output = outputBuilder.ToString();
-            var error = errorBuilder.ToString();
-
-            if (process.ExitCode == 0)
+            finally
             {
-                _logger.LogInformation("Script hook executed successfully: {Command}. Exit code: {ExitCode}", 
-                    resolvedCommand, process.ExitCode);
-                if (!string.IsNullOrWhiteSpace(output))
+                // Ensure process is properly disposed even in case of exceptions or timeouts
+                if (process != null)
                 {
-                    _logger.LogDebug("Script output: {Output}", output);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Script hook execution failed: {Command}. Exit code: {ExitCode}", 
-                    resolvedCommand, process.ExitCode);
-                if (!string.IsNullOrWhiteSpace(error))
-                {
-                    _logger.LogWarning("Script error output: {Error}", error);
+                    try
+                    {
+                        if (!process.HasExited)
+                        {
+                            try
+                            {
+                                process.Kill();
+                            }
+                            catch (Exception killEx)
+                            {
+                                _logger.LogWarning(killEx, "Error killing process during disposal: {Command}", resolvedCommand);
+                            }
+                        }
+
+                        // Wait a bit for the process to exit after kill
+                        if (!process.HasExited)
+                        {
+                            try
+                            {
+                                process.WaitForExit(1000);
+                            }
+                            catch (Exception waitEx)
+                            {
+                                _logger.LogWarning(waitEx, "Error waiting for process exit during disposal: {Command}", resolvedCommand);
+                            }
+                        }
+
+                        process.Dispose();
+                    }
+                    catch (Exception disposeEx)
+                    {
+                        _logger.LogWarning(disposeEx, "Error disposing process: {Command}", resolvedCommand);
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Hooks;
 using SGuard.ConfigValidation.Services;
@@ -125,8 +126,17 @@ internal class Program
         services.AddSingleton<IPathResolver, PathResolver>();
         services.AddSingleton<IRuleEngine, RuleEngine>();
         
+        // Register HttpClient factory for webhook hooks
+        services.AddHttpClient();
+        
         // Register hook services
-        services.AddSingleton<HookFactory>();
+        services.AddSingleton<HookFactory>(sp =>
+        {
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            var securityOptions = sp.GetRequiredService<IOptions<SecurityOptions>>();
+            var httpClientFactory = sp.GetService<IHttpClientFactory>();
+            return new HookFactory(loggerFactory, securityOptions, httpClientFactory);
+        });
         services.AddSingleton<HookExecutor>();
         
         // Register output formatters

@@ -1,5 +1,4 @@
 using System.Text;
-using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Results;
 using static SGuard.ConfigValidation.Common.Throw;

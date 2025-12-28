@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Extensions;
 using SGuard.ConfigValidation.Services;

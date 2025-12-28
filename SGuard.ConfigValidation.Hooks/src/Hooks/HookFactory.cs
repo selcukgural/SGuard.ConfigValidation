@@ -9,17 +9,20 @@ namespace SGuard.ConfigValidation.Hooks;
 public sealed class HookFactory
 {
     private readonly ILoggerFactory _loggerFactory;
+    private readonly IHttpClientFactory? _httpClientFactory;
 
     /// <summary>
     /// Initializes a new instance of the HookFactory class.
     /// </summary>
     /// <param name="loggerFactory">Logger factory instance.</param>
+    /// <param name="httpClientFactory">Optional HTTP client factory for creating HttpClient instances. If not provided, a new HttpClient will be created for each webhook hook (not recommended for production).</param>
     /// <exception cref="System.ArgumentNullException">Thrown when <paramref name="loggerFactory"/> is null.</exception>
-    public HookFactory(ILoggerFactory loggerFactory)
+    public HookFactory(ILoggerFactory loggerFactory, IHttpClientFactory? httpClientFactory = null)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
         _loggerFactory = loggerFactory;
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -75,11 +78,28 @@ public sealed class HookFactory
             return null;
         }
 
-        var httpClient = new HttpClient();
+        // Use IHttpClientFactory if available, otherwise create a new HttpClient (fallback for backward compatibility)
+        HttpClient httpClient;
+        if (_httpClientFactory != null)
+        {
+            httpClient = _httpClientFactory.CreateClient();
+        }
+        else
+        {
+            _loggerFactory.CreateLogger<HookFactory>().LogWarning(
+                "IHttpClientFactory is not available. Creating a new HttpClient for webhook hook. " +
+                "This may lead to socket exhaustion in production. Consider registering IHttpClientFactory in DI container.");
+            httpClient = new HttpClient();
+        }
+
         var method = string.IsNullOrWhiteSpace(config.Method) ? "POST" : config.Method.ToUpperInvariant();
+        var timeout = config.Timeout ?? 10000; // Default 10 seconds
+
+        // Set timeout on HttpClient
+        httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
 
         return new WebhookHook(config.Url, method, config.Headers ?? new Dictionary<string, string>(), config.Body,
-                               config.Timeout ?? 10000, // Default 10 seconds
+                               timeout,
                                httpClient, _loggerFactory.CreateLogger<WebhookHook>());
     }
 

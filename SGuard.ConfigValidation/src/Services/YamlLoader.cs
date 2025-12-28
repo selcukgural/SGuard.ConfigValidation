@@ -41,11 +41,12 @@ public sealed class YamlLoader : IYamlLoader
     }
 
     /// <summary>
-    /// Loads the SGuard configuration from a YAML file.
+    /// Loads the SGuard configuration from a YAML file asynchronously.
     /// Converts YAML to JSON internally for deserialization using System.Text.Json.
     /// </summary>
     /// <param name="yamlPath">The path to the YAML configuration file.</param>
-    /// <returns>The loaded <see cref="SGuardConfig"/> instance.</returns>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the loaded <see cref="SGuardConfig"/> instance.</returns>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
     /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is empty, invalid, or cannot be deserialized.</exception>
@@ -80,7 +81,7 @@ public sealed class YamlLoader : IYamlLoader
     /// }
     /// </code>
     /// </example>
-    public SGuardConfig LoadConfig(string yamlPath)
+    public async Task<SGuardConfig> LoadConfigAsync(string yamlPath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(yamlPath))
         {
@@ -95,7 +96,7 @@ public sealed class YamlLoader : IYamlLoader
             // Check file size before reading to prevent DoS attacks
             FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_YamlFileSizeExceedsLimit));
 
-            var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
+            var yamlContent = await SafeFileSystem.SafeReadAllTextAsync(yamlPath, cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
             {
@@ -215,11 +216,12 @@ public sealed class YamlLoader : IYamlLoader
     }
 
     /// <summary>
-    /// Loads app settings from a YAML file and flattens them into a dictionary.
+    /// Loads app settings from a YAML file and flattens them into a dictionary asynchronously.
     /// Converts YAML to JSON internally, then flattens nested objects with colon-separated keys.
     /// </summary>
     /// <param name="yamlPath">The path to the YAML app settings file.</param>
-    /// <returns>A dictionary containing flattened app settings with colon-separated keys (e.g., "Logging:LogLevel:Default").</returns>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a dictionary with flattened app settings with colon-separated keys (e.g., "Logging:LogLevel:Default").</returns>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="yamlPath"/> is null or empty.</exception>
     /// <exception cref="System.IO.FileNotFoundException">Thrown when the YAML file does not exist.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the YAML file is invalid or cannot be deserialized.</exception>
@@ -264,7 +266,7 @@ public sealed class YamlLoader : IYamlLoader
     /// }
     /// </code>
     /// </example>
-    public Dictionary<string, object> LoadAppSettings(string yamlPath)
+    public async Task<Dictionary<string, object>> LoadAppSettingsAsync(string yamlPath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(yamlPath))
         {
@@ -279,7 +281,7 @@ public sealed class YamlLoader : IYamlLoader
             // Check file size before reading to prevent DoS attacks
             FileSecurity.ValidateFileSize(yamlPath, _securityOptions.MaxFileSizeBytes, _logger, nameof(SR.ConfigurationException_AppSettingsFileSizeExceedsLimit));
 
-            var yamlContent = SafeFileSystem.SafeReadAllText(yamlPath);
+            var yamlContent = await SafeFileSystem.SafeReadAllTextAsync(yamlPath, cancellationToken).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(yamlContent))
             {

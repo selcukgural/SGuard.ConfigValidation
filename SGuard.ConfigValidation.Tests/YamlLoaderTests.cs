@@ -21,7 +21,7 @@ public sealed class YamlLoaderTests : IDisposable
     }
 
     [Fact]
-    public void LoadConfig_With_ValidYamlFile_Should_Return_Config()
+    public async Task LoadConfig_With_ValidYamlFile_Should_Return_Config()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("valid-sguard.yaml", @"
@@ -45,7 +45,7 @@ rules:
 ");
 
         // Act
-        var config = _loader.LoadConfig(yamlPath);
+        var config = await _loader.LoadConfigAsync(yamlPath);
 
         // Assert
         config.Should().NotBeNull();
@@ -58,7 +58,7 @@ rules:
     }
 
     [Fact]
-    public void LoadConfig_With_EmptyRulesArray_Should_Throw_ConfigurationException()
+    public async Task LoadConfig_With_EmptyRulesArray_Should_Throw_ConfigurationException()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("empty-rules.yaml", @"
@@ -71,24 +71,24 @@ rules: []
 ");
 
         // Act & Assert
-        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(yamlPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await _loader.LoadConfigAsync(yamlPath));
         exception.Message.Should().Contain("No rules defined");
         exception.Message.Should().Contain("0 rules");
     }
 
     [Fact]
-    public void LoadConfig_With_NonExistentFile_Should_Throw_FileNotFoundException()
+    public async Task LoadConfig_With_NonExistentFile_Should_Throw_FileNotFoundException()
     {
         // Arrange
         var nonExistentPath = Path.Combine(_testDirectory, "nonexistent.yaml");
 
         // Act & Assert
-        var exception = Assert.Throws<FileNotFoundException>(() => _loader.LoadConfig(nonExistentPath));
+        var exception = await Assert.ThrowsAsync<FileNotFoundException>(async () => await _loader.LoadConfigAsync(nonExistentPath));
         exception.Message.Should().Contain("nonexistent.yaml");
     }
 
     [Fact]
-    public void LoadAppSettings_With_ValidYamlFile_Should_Return_Dictionary()
+    public async Task LoadAppSettings_With_ValidYamlFile_Should_Return_Dictionary()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("appsettings.yaml", @"
@@ -100,7 +100,7 @@ AllowedHosts: '*'
 ");
 
         // Act
-        var appSettings = _loader.LoadAppSettings(yamlPath);
+        var appSettings = await _loader.LoadAppSettingsAsync(yamlPath);
 
         // Assert
         appSettings.Should().HaveCount(3);
@@ -113,18 +113,18 @@ AllowedHosts: '*'
     }
 
     [Fact]
-    public void LoadConfig_With_EmptyFile_Should_Throw_ConfigurationException()
+    public async Task LoadConfig_With_EmptyFile_Should_Throw_ConfigurationException()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("empty.yaml", "");
 
         // Act & Assert
-        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(yamlPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await _loader.LoadConfigAsync(yamlPath));
         exception.Message.Should().Contain("empty");
     }
 
     [Fact]
-    public void LoadConfig_With_InvalidYaml_Should_Throw_ConfigurationException()
+    public async Task LoadConfig_With_InvalidYaml_Should_Throw_ConfigurationException()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("invalid.yaml", @"
@@ -136,12 +136,12 @@ environments:
 ");
 
         // Act & Assert
-        var exception = Assert.Throws<ConfigurationException>(() => _loader.LoadConfig(yamlPath));
+        var exception = await Assert.ThrowsAsync<ConfigurationException>(async () => await _loader.LoadConfigAsync(yamlPath));
         exception.Message.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
-    public void LoadConfig_With_YamlContainingRules_Should_LoadRules()
+    public async Task LoadConfig_With_YamlContainingRules_Should_LoadRules()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("with-rules.yaml", @"
@@ -164,7 +164,7 @@ rules:
 ");
 
         // Act
-        var config = _loader.LoadConfig(yamlPath);
+        var config = await _loader.LoadConfigAsync(yamlPath);
 
         // Assert
         config.Should().NotBeNull();
@@ -179,20 +179,20 @@ rules:
     }
 
     [Fact]
-    public void LoadAppSettings_With_EmptyFile_Should_Return_EmptyDictionary()
+    public async Task LoadAppSettings_With_EmptyFile_Should_Return_EmptyDictionary()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("empty.yaml", "");
 
         // Act
-        var appSettings = _loader.LoadAppSettings(yamlPath);
+        var appSettings = await _loader.LoadAppSettingsAsync(yamlPath);
 
         // Assert
         appSettings.Should().BeEmpty();
     }
 
     [Fact]
-    public void LoadAppSettings_With_NestedYaml_Should_FlattenCorrectly()
+    public async Task LoadAppSettings_With_NestedYaml_Should_FlattenCorrectly()
     {
         // Arrange
         var yamlPath = CreateTestYamlFile("nested.yaml", @"
@@ -206,7 +206,7 @@ Database:
 ");
 
         // Act
-        var appSettings = _loader.LoadAppSettings(yamlPath);
+        var appSettings = await _loader.LoadAppSettingsAsync(yamlPath);
 
         // Assert
         appSettings.Should().HaveCount(4);

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace SGuard.ConfigValidation.Models;
 
 /// <summary>

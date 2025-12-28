@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Services.Abstract;
+using SGuard.ConfigValidation.Telemetry;
 using static SGuard.ConfigValidation.Common.Throw;
 
 namespace SGuard.ConfigValidation.Services;
@@ -85,8 +86,11 @@ public sealed class PathResolver : IPathResolver
         {
             // Validate a cached path is still within the base directory (defense in depth)
             PathSecurity.ValidateResolvedPath(cachedPath, basePath);
+            ValidationMetrics.RecordCacheHit();
             return cachedPath;
         }
+        
+        ValidationMetrics.RecordCacheMiss();
 
         string resolvedPath;
 
@@ -124,18 +128,32 @@ public sealed class PathResolver : IPathResolver
         
         // Cache the resolved path (only if validation passed)
         // Enforce cache size limit to prevent memory exhaustion
-        if (_pathCache.Count >= _securityOptions.MaxPathCacheSize)
+        // Use atomic check-and-add pattern to avoid race conditions
+        // TryAdd will fail if cache is full, then we evict and retry
+        if (!_pathCache.TryAdd(sanitizedCacheKey, resolvedPath))
         {
-            // Remove the oldest entries if the cache is full (simple eviction: remove first entry)
-            // In a production system, LRU eviction would be better, but this is simpler and sufficient
-            var firstKey = _pathCache.Keys.FirstOrDefault();
-            if (firstKey != null)
+            // Key already exists in cache (shouldn't happen due to cache check above, but handle it)
+            // Update the existing entry
+            _pathCache[sanitizedCacheKey] = resolvedPath;
+        }
+        else
+        {
+            // Successfully added, but check if we need to evict entries
+            // Use atomic check: if count exceeds limit, evict oldest entries
+            // This is still not perfect (race condition possible), but better than before
+            // In high-concurrency scenarios, cache might temporarily exceed limit, but will self-correct
+            if (_pathCache.Count > _securityOptions.MaxPathCacheSize)
             {
-                _pathCache.TryRemove(firstKey, out _);
+                // Evict entries until we're under the limit
+                // Remove oldest entries (simple eviction: remove first N entries)
+                var entriesToRemove = _pathCache.Count - _securityOptions.MaxPathCacheSize + 1; // Remove one extra to make room
+                var keysToRemove = _pathCache.Keys.Take(entriesToRemove).ToList();
+                foreach (var key in keysToRemove)
+                {
+                    _pathCache.TryRemove(key, out _);
+                }
             }
         }
-        
-        _pathCache.TryAdd(sanitizedCacheKey, resolvedPath);
         
         return resolvedPath;
     }

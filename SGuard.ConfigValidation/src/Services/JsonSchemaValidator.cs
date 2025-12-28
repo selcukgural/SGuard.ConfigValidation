@@ -24,6 +24,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// </summary>
     /// <param name="jsonContent">The JSON content to validate.</param>
     /// <param name="schemaContent">The JSON schema content.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous validation operation. The task result contains a <see cref="SchemaValidationResult"/> with validation errors if any.</returns>
     /// <exception cref="System.Text.Json.JsonException">Thrown when the JSON or schema format is invalid.</exception>
     /// <example>
@@ -68,8 +69,10 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// }
     /// </code>
     /// </example>
-    public async Task<SchemaValidationResult> ValidateAsync(string jsonContent, string schemaContent)
+    public async Task<SchemaValidationResult> ValidateAsync(string jsonContent, string schemaContent, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
             var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_JsonContentRequired));
@@ -85,6 +88,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
         try
         {
             var schema = await JsonSchema.FromJsonAsync(schemaContent);
+            cancellationToken.ThrowIfCancellationRequested();
             return ValidateWithSchema(jsonContent, schema);
         }
         catch (JsonException ex)
@@ -111,6 +115,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// </summary>
     /// <param name="jsonContent">The JSON content to validate.</param>
     /// <param name="schemaPath">The path to the JSON schema file.</param>
+    /// <param name="cancellationToken">Optional cancellation token to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous validation operation. The task result contains a <see cref="SchemaValidationResult"/> with validation errors if any.</returns>
     /// <exception cref="System.IO.FileNotFoundException">Thrown when the schema file does not exist.</exception>
     /// <exception cref="System.IO.IOException">Thrown when an I/O error occurs while reading the schema file.</exception>
@@ -139,8 +144,10 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
     /// }
     /// </code>
     /// </example>
-    public async Task<SchemaValidationResult> ValidateAgainstFileAsync(string jsonContent, string schemaPath)
+    public async Task<SchemaValidationResult> ValidateAgainstFileAsync(string jsonContent, string schemaPath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        
         if (string.IsNullOrWhiteSpace(jsonContent))
         {
             var message = SR.ResourceManager.GetString(nameof(SR.JsonSchemaValidator_JsonContentRequired));
@@ -174,6 +181,7 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
                 // If a file hasn't changed, use cached schema
                 if (cached.LastModified == lastModified)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     return ValidateWithSchema(jsonContent, cached.Schema);
                 }
 
@@ -182,8 +190,10 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
             }
             
             // Load schema from a file
-            var schemaContent = SafeFileSystem.SafeReadAllText(schemaPath);
+            var schemaContent = await SafeFileSystem.SafeReadAllTextAsync(schemaPath, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             var schema = await JsonSchema.FromJsonAsync(schemaContent);
+            cancellationToken.ThrowIfCancellationRequested();
             
             // Cache the schema with modification time
             _schemaCache.TryAdd(schemaPath, (schema, lastModified));

@@ -27,7 +27,7 @@ public sealed class SGuardCliIntegrationTests : IDisposable
         var ruleEngineLogger = NullLogger<RuleEngine>.Instance;
         var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, ruleEngineLogger, securityOptions);
         var hookFactoryLoggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        var hookFactory = new HookFactory(hookFactoryLoggerFactory);
+        var hookFactory = new HookFactory(hookFactoryLoggerFactory, securityOptions, httpClientFactory: null);
         var hookExecutorLogger = NullLogger<HookExecutor>.Instance;
         var hookExecutor = new HookExecutor(hookFactory, hookExecutorLogger);
         var cliLogger = NullLogger<SGuardCli>.Instance;

@@ -75,6 +75,22 @@ public sealed class SecurityOptions
     public int MaxJsonDepth { get; set; } = SecurityConstants.MaxJsonDepth;
 
     /// <summary>
+    /// Maximum number of environments that can be validated in parallel.
+    /// Default: Number of processor cores (Environment.ProcessorCount)
+    /// Hard limit: 100
+    /// Prevents resource exhaustion from excessive parallelization.
+    /// </summary>
+    public int MaxParallelEnvironments { get; set; } = SecurityConstants.MaxParallelEnvironments;
+
+    /// <summary>
+    /// Maximum script output size in bytes.
+    /// Default: 1 MB (1,048,576 bytes)
+    /// Hard limit: 10 MB (10,485,760 bytes)
+    /// Script hooks output exceeding this limit will be truncated to prevent DoS attacks.
+    /// </summary>
+    public long MaxScriptOutputSizeBytes { get; set; } = SecurityConstants.MaxScriptOutputSizeBytes;
+
+    /// <summary>
     /// Validates and clamps security options to ensure they do not exceed hard limits.
     /// Logs warnings if values are clamped.
     /// </summary>
@@ -147,16 +163,32 @@ public sealed class SecurityOptions
             clamped = true;
         }
 
-        if (MaxJsonDepth <= SecurityConstants.MaxJsonDepthHardLimit)
+        if (MaxJsonDepth > SecurityConstants.MaxJsonDepthHardLimit)
         {
-            return clamped;
+            logger?.LogWarning(
+                "Security option 'MaxJsonDepth' ({Value}) exceeds hard limit ({HardLimit}). Clamping to hard limit.",
+                MaxJsonDepth, SecurityConstants.MaxJsonDepthHardLimit);
+            MaxJsonDepth = SecurityConstants.MaxJsonDepthHardLimit;
+            clamped = true;
         }
 
-        logger?.LogWarning(
-            "Security option 'MaxJsonDepth' ({Value}) exceeds hard limit ({HardLimit}). Clamping to hard limit.",
-            MaxJsonDepth, SecurityConstants.MaxJsonDepthHardLimit);
-        MaxJsonDepth = SecurityConstants.MaxJsonDepthHardLimit;
-        clamped = true;
+        if (MaxParallelEnvironments > SecurityConstants.MaxParallelEnvironmentsHardLimit)
+        {
+            logger?.LogWarning(
+                "Security option 'MaxParallelEnvironments' ({Value}) exceeds hard limit ({HardLimit}). Clamping to hard limit.",
+                MaxParallelEnvironments, SecurityConstants.MaxParallelEnvironmentsHardLimit);
+            MaxParallelEnvironments = SecurityConstants.MaxParallelEnvironmentsHardLimit;
+            clamped = true;
+        }
+
+        if (MaxScriptOutputSizeBytes > SecurityConstants.MaxScriptOutputSizeBytesHardLimit)
+        {
+            logger?.LogWarning(
+                "Security option 'MaxScriptOutputSizeBytes' ({Value} bytes) exceeds hard limit ({HardLimit} bytes). Clamping to hard limit.",
+                MaxScriptOutputSizeBytes, SecurityConstants.MaxScriptOutputSizeBytesHardLimit);
+            MaxScriptOutputSizeBytes = SecurityConstants.MaxScriptOutputSizeBytesHardLimit;
+            clamped = true;
+        }
 
         return clamped;
     }

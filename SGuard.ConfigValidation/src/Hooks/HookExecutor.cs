@@ -1,8 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Results;
+using SGuard.ConfigValidation.Telemetry;
 
 namespace SGuard.ConfigValidation.Hooks;
 
@@ -151,19 +151,28 @@ public sealed class HookExecutor
     /// </remarks>
     private async Task ExecuteHookAsync(HookConfig hookConfig, HookContext context, CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             var hook = _hookFactory.CreateHook(hookConfig);
             if (hook == null)
             {
                 _logger.LogWarning("Failed to create hook instance for type: {HookType}", hookConfig.Type);
+                ValidationMetrics.RecordHookExecutionFailure();
                 return;
             }
 
             await hook.ExecuteAsync(context, cancellationToken);
+            
+            stopwatch.Stop();
+            ValidationMetrics.RecordHookExecution();
+            ValidationMetrics.RecordHookExecutionDuration(stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
+            ValidationMetrics.RecordHookExecutionFailure();
+            ValidationMetrics.RecordHookExecutionDuration(stopwatch.ElapsedMilliseconds);
             _logger.LogError(ex, "Error executing hook: {HookType}", hookConfig.Type);
             // Don't throw - hook failures should not affect validation
         }

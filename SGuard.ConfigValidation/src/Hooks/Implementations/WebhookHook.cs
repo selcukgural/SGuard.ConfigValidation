@@ -1,4 +1,3 @@
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -49,7 +48,12 @@ public sealed class WebhookHook : IHook
         _body = body;
         _timeout = timeout;
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
+        // Note: HttpClient timeout should be set by the factory or caller, not here
+        // Setting it here is a fallback for backward compatibility
+        if (_httpClient.Timeout == TimeSpan.FromSeconds(100)) // Default HttpClient timeout
+        {
+            _httpClient.Timeout = TimeSpan.FromMilliseconds(timeout);
+        }
         _logger = logger;
     }
 
