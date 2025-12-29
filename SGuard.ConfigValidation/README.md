@@ -15,7 +15,7 @@ Use cases include:
 
 With SGuard.ConfigValidation, you reduce the risk of runtime failures, improve deployment reliability, and enforce best practices around configuration management—leading to more robust applications and happier teams.
 
-## ✨ Why? (Why use SGuard.ConfigValidation?)
+## ✨ Why?
 
 Misconfigurations are among the most common sources of production incidents, outages, and security vulnerabilities. Mistyped keys, missing secrets, or incorrect environment variables often go unnoticed until the application is started or deployed—sometimes resulting in downtime, failed deployments, or even data loss.
 
