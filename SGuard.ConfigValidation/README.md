@@ -1,11 +1,33 @@
 # SGuard.ConfigValidation
 
-A lightweight tool to catch critical configuration issues **before runtime**.
+A powerful yet lightweight tool to catch critical configuration issues **before runtime**, ensuring your .NET applications run reliably across all environments.
+
+## ✨ Description
+
+SGuard.ConfigValidation is designed to help developers and DevOps teams detect missing, invalid, or misconfigured settings in configuration files *before* the application runs—either at startup or (ideally) automatically during your CI/CD pipelines. The library supports both JSON (default) and YAML configuration formats and fits seamlessly into any .NET project. It offers a highly extensible architecture, making it easy to add custom validators or integrate with existing tools. Whether you use it as a CLI tool or programmatically inside your code, it helps to ensure your configuration files (like `appsettings.json`, environment variables, and custom config files) are complete and valid for all specified environments.
+
+Use cases include:
+- Early detection of missing connection strings, API keys, or URLs
+- Preventing production outages caused by configuration errors
+- Automated configuration validation in build/deploy pipelines
+- Enforcing security and size limits for configuration files
+- Supporting both small projects and large enterprise-grade solutions by handling thousands of environments or rules efficiently
+
+With SGuard.ConfigValidation, you reduce the risk of runtime failures, improve deployment reliability, and enforce best practices around configuration management—leading to more robust applications and happier teams.
 
 ## ✨ Why?
 
-Misconfigured environments, missing connection strings, or wrong URLs can cause major issues after deployment.  
-**SGuard.ConfigValidation** helps you detect these problems **early**, during application startup or in your CI/CD pipeline.
+Misconfigurations are among the most common sources of production incidents, outages, and security vulnerabilities. Mistyped keys, missing secrets, or incorrect environment variables often go unnoticed until the application is started or deployed—sometimes resulting in downtime, failed deployments, or even data loss.
+
+SGuard.ConfigValidation helps you:
+- **Shift left**: Catch configuration errors as early as possible, ideally before deploying to production.
+- **Automate checks**: Integrate config validation into your CI/CD pipeline so no bad configs slip through unnoticed.
+- **Support all environments**: Validate against every environment (development, staging, production, etc.) and ensure consistent configuration health everywhere.
+- **Extend easily**: Create and plug in your own custom validation rules, tailored to your application's needs.
+- **Increase security & reliability**: Enforce size, depth, and complexity limits to prevent resource exhaustion, and protect against common configuration issues like missing or weak secrets.
+- **Save time and resources**: Debugging runtime issues caused by misconfiguration can be costly. By detecting these problems before deployment, you reduce downtime, support costs, and stress for both developers and operations teams.
+
+In short, SGuard.ConfigValidation gives you confidence that your application will work as expected, in every environment, every time.
 
 ## 🚀 Features
 
@@ -926,7 +948,9 @@ This will execute benchmarks for:
 - [x] Custom validator plugins
 - [x] Schema validation for sguard.json
 - [x] Performance optimizations (caching, memory allocation improvements)
-- [ ] CI/CD pipeline integration examples
+- [x] CI/CD pipeline integration (GitHub Actions with test coverage)
+- [ ] NuGet package publishing and distribution
+
 
 ## 🔌 Using as a Library (DLL)
 
