@@ -948,7 +948,9 @@ This will execute benchmarks for:
 - [x] Custom validator plugins
 - [x] Schema validation for sguard.json
 - [x] Performance optimizations (caching, memory allocation improvements)
-- [ ] CI/CD pipeline integration examples
+- [x] CI/CD pipeline integration (GitHub Actions with test coverage)
+- [ ] NuGet package publishing and distribution
+
 
 ## 🔌 Using as a Library (DLL)
 
