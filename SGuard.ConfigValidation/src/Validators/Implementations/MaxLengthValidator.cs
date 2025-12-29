@@ -1,7 +1,6 @@
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Results;
-using SGuard.ConfigValidation.Utils;
 using SGuard.ConfigValidation.Validators.Base;
 
 namespace SGuard.ConfigValidation.Validators;
@@ -28,10 +27,14 @@ public sealed class MaxLengthValidator : BaseValidator<object>
         // Get condition value in a type-safe manner
         var conditionTypedValue = condition.GetTypedValue();
 
+        // Defensive coding: Validate that condition.Value can be converted to int32
         if (!conditionTypedValue.TryGetInt32(out var maxLength))
         {
-            // Use JsonElementHelper for backward compatibility (may throw exception)
-            maxLength = JsonElementHelper.GetInt32(condition.Value, ValidatorType);
+            return CreateFailure(
+                condition.Message,
+                string.Empty,
+                value,
+                $"invalid condition value type: expected integer for {ValidatorType} validator, but got {conditionTypedValue.Type}");
         }
 
         if (stringValue.Length > maxLength)

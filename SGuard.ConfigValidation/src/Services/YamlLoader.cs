@@ -109,6 +109,8 @@ public sealed class YamlLoader : IYamlLoader
                 throw ConfigurationException(nameof(SR.ConfigurationException_YamlFileEmpty), yamlPath, Path.GetFullPath(yamlPath));
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Convert YAML to JSON for deserialization (using System.Text.Json)
             var jsonContent = ConvertYamlToJson(yamlContent);
 
@@ -300,8 +302,12 @@ public sealed class YamlLoader : IYamlLoader
                 return new Dictionary<string, object>();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Convert YAML to JSON for processing
             var jsonContent = ConvertYamlToJson(yamlContent);
+            
+            cancellationToken.ThrowIfCancellationRequested();
             using var document = JsonDocument.Parse(jsonContent, JsonOptions.Document);
 
             // Pre-allocate dictionary with estimated capacity

@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     
     strategy:
@@ -28,8 +28,16 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
     
-    - name: Test
-      run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory:"${{ runner.temp }}/TestResults" --framework ${{ matrix.framework }}
+    - name: Test with Coverage
+      run: |
+        dotnet test \
+          --no-build \
+          --configuration Release \
+          --collect:"XPlat Code Coverage" \
+          --results-directory:"${{ runner.temp }}/TestResults" \
+          --framework ${{ matrix.framework }} \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura,json \
+          --logger:"trx;LogFileName=test-results-${{ matrix.framework }}.trx"
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -38,4 +46,53 @@ jobs:
         flags: ${{ matrix.framework }}
         name: codecov-${{ matrix.framework }}
         fail_ci_if_error: false
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.framework }}
+        path: ${{ runner.temp }}/TestResults
+        retention-days: 30
+
+  coverage-summary:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: always()
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: test-results-*
+        merge-multiple: true
+        path: coverage-reports
+    
+    - name: Generate coverage summary
+      run: |
+        echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Framework | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        for framework in net8.0 net9.0 net10.0; do
+          coverage_file=$(find coverage-reports -name "coverage.cobertura.xml" -path "*$framework*" 2>/dev/null | head -1)
+          if [ -f "$coverage_file" ]; then
+            echo "| $framework | ✅ Coverage report generated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| $framework | ⚠️ Coverage report not found |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Coverage reports are available in the test artifacts for detailed analysis." >> $GITHUB_STEP_SUMMARY
+    
+    - name: Upload coverage summary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-summary
+        path: coverage-reports
+        retention-days: 30
 

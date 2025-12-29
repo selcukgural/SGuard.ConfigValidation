@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using NJsonSchema;
@@ -12,15 +14,30 @@ namespace SGuard.ConfigValidation.Services;
 
 /// <summary>
 /// Validates JSON content against JSON Schema using NJsonSchema.
+/// Monitors schema files for changes and automatically invalidates cache when files are modified.
 /// </summary>
-public sealed partial class JsonSchemaValidator : ISchemaValidator
+public sealed partial class JsonSchemaValidator : ISchemaValidator, IDisposable
 {
     // Cache for schema instances (file path -> schema instance)
     // Includes file modification time for cache invalidation
     private readonly ConcurrentDictionary<string, (JsonSchema Schema, DateTime LastModified)> _schemaCache = new();
 
+    // Cache for schema instances parsed from content strings (schema content hash -> schema instance)
+    // Used to avoid re-parsing the same schema content multiple times
+    private readonly ConcurrentDictionary<string, JsonSchema> _schemaContentCache = new();
+
+    // FileSystemWatcher instances for monitoring schema file changes (normalized path -> watcher)
+    private readonly ConcurrentDictionary<string, FileSystemWatcher> _fileWatchers = new();
+
+    // Lock object for thread-safe file watcher operations
+    private readonly object _watcherLock = new();
+
+    // Flag to track disposal state
+    private bool _disposed;
+
     /// <summary>
     /// Validates JSON content against a schema.
+    /// Uses caching to improve performance when the same schema content is validated multiple times.
     /// </summary>
     /// <param name="jsonContent">The JSON content to validate.</param>
     /// <param name="schemaContent">The JSON schema content.</param>
@@ -93,9 +110,24 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
 
         try
         {
+            // Compute hash of schema content for caching
+            var schemaHash = ComputeSchemaContentHash(schemaContent);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Check cache
+            if (_schemaContentCache.TryGetValue(schemaHash, out var cachedSchema))
+            {
+                return ValidateWithSchema(jsonContent, cachedSchema);
+            }
+
+            // Parse schema and cache it
             var schema = await JsonSchema.FromJsonAsync(schemaContent, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            return ValidateWithSchema(jsonContent, schema);
+
+            // Cache the schema (use GetOrAdd to handle concurrent additions)
+            var cached = _schemaContentCache.GetOrAdd(schemaHash, schema);
+
+            return ValidateWithSchema(jsonContent, cached);
         }
         catch (JsonException ex)
         {
@@ -183,14 +215,20 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
 
         try
         {
+            // Normalize path for consistent cache and watcher management
+            var normalizedPath = Path.GetFullPath(schemaPath);
+
+            // Ensure file watcher is set up for this schema file
+            EnsureFileWatcher(normalizedPath);
+
             // Get file modification time for cache invalidation
-            var fileInfo = new FileInfo(schemaPath);
+            var fileInfo = new FileInfo(normalizedPath);
             var lastModified = fileInfo.LastWriteTimeUtc;
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // Check cache
-            if (_schemaCache.TryGetValue(schemaPath, out var cached))
+            if (_schemaCache.TryGetValue(normalizedPath, out var cached))
             {
                 // If a file hasn't changed, use cached schema
                 if (cached.LastModified == lastModified)
@@ -199,16 +237,16 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
                 }
 
                 // File changed, remove from cache
-                _schemaCache.TryRemove(schemaPath, out _);
+                _schemaCache.TryRemove(normalizedPath, out _);
             }
 
             // Load schema from a file
-            var schemaContent = await FileUtility.ReadAllTextAsync(schemaPath, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var schemaContent = await FileUtility.ReadAllTextAsync(normalizedPath, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             var schema = await JsonSchema.FromJsonAsync(schemaContent, cancellationToken).ConfigureAwait(false);
 
             // Cache the schema with modification time
-            _schemaCache.TryAdd(schemaPath, (schema, lastModified));
+            _schemaCache.TryAdd(normalizedPath, (schema, lastModified));
 
             return ValidateWithSchema(jsonContent, schema);
         }
@@ -361,4 +399,175 @@ public sealed partial class JsonSchemaValidator : ISchemaValidator
 
     [GeneratedRegex(@"\[(.*?)\]")]
     private static partial Regex ExtractMissingPropertiesRegex();
+
+    /// <summary>
+    /// Computes a SHA256 hash of the schema content for use as a cache key.
+    /// </summary>
+    /// <param name="schemaContent">The schema content to hash.</param>
+    /// <returns>A hexadecimal string representation of the hash.</returns>
+    private static string ComputeSchemaContentHash(string schemaContent)
+    {
+        var bytes = Encoding.UTF8.GetBytes(schemaContent);
+        var hashBytes = SHA256.HashData(bytes);
+        return Convert.ToHexString(hashBytes);
+    }
+
+    /// <summary>
+    /// Ensures a FileSystemWatcher is set up for the specified schema file path.
+    /// Creates a watcher if one doesn't exist for this file.
+    /// </summary>
+    /// <param name="schemaPath">The normalized path to the schema file.</param>
+    private void EnsureFileWatcher(string schemaPath)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        // Check if watcher already exists
+        if (_fileWatchers.ContainsKey(schemaPath))
+        {
+            return;
+        }
+
+        lock (_watcherLock)
+        {
+            // Double-check after acquiring lock
+            if (_fileWatchers.ContainsKey(schemaPath) || _disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                var directory = Path.GetDirectoryName(schemaPath);
+                var fileName = Path.GetFileName(schemaPath);
+
+                if (string.IsNullOrEmpty(directory) || string.IsNullOrEmpty(fileName))
+                {
+                    return;
+                }
+
+                var watcher = new FileSystemWatcher(directory, fileName)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+                    EnableRaisingEvents = true
+                };
+
+                // Handle file changes
+                watcher.Changed += (_, e) => OnSchemaFileChanged(e.FullPath);
+                watcher.Deleted += (_, e) => OnSchemaFileChanged(e.FullPath);
+                watcher.Renamed += (_, e) =>
+                {
+                    // Remove cache for old path
+                    OnSchemaFileChanged(e.OldFullPath);
+                    // Invalidate cache for new path if it exists
+                    if (FileUtility.FileExists(e.FullPath))
+                    {
+                        OnSchemaFileChanged(e.FullPath);
+                    }
+                };
+
+                _fileWatchers.TryAdd(schemaPath, watcher);
+            }
+            catch
+            {
+                // Silently fail if watcher cannot be created (e.g., insufficient permissions, network path)
+                // Cache invalidation will still work via LastModified check during validation
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles schema file change events by invalidating the cache and preloading the new schema.
+    /// This enables hot reload: when a schema file changes, the new schema is loaded immediately
+    /// and ready for the next validation call without delay.
+    /// </summary>
+    /// <param name="filePath">The path to the file that changed.</param>
+    private void OnSchemaFileChanged(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var normalizedPath = Path.GetFullPath(filePath);
+            
+            // Remove old cache entry
+            _schemaCache.TryRemove(normalizedPath, out _);
+
+            // Preload new schema for hot reload (fire and forget)
+            // This ensures the new schema is ready immediately for the next validation call
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Wait a bit to ensure file write is complete
+                    await Task.Delay(100).ConfigureAwait(false);
+
+                    if (!FileUtility.FileExists(normalizedPath))
+                    {
+                        return;
+                    }
+
+                    var fileInfo = new FileInfo(normalizedPath);
+                    var lastModified = fileInfo.LastWriteTimeUtc;
+
+                    // Load and cache the new schema
+                    var schemaContent = await FileUtility.ReadAllTextAsync(normalizedPath).ConfigureAwait(false);
+                    var schema = await JsonSchema.FromJsonAsync(schemaContent).ConfigureAwait(false);
+
+                    // Update cache with new schema
+                    _schemaCache.TryAdd(normalizedPath, (schema, lastModified));
+                }
+                catch
+                {
+                    // Silently handle errors during preload
+                    // Cache will be loaded on-demand during next validation
+                }
+            });
+        }
+        catch
+        {
+            // Silently handle path resolution errors
+        }
+    }
+
+    /// <summary>
+    /// Releases all resources used by the JsonSchemaValidator, including FileSystemWatcher instances.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        lock (_watcherLock)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            // Dispose all file watchers
+            foreach (var watcher in _fileWatchers.Values)
+            {
+                try
+                {
+                    watcher.EnableRaisingEvents = false;
+                    watcher.Dispose();
+                }
+                catch
+                {
+                    // Silently handle disposal errors
+                }
+            }
+
+            _fileWatchers.Clear();
+            _disposed = true;
+        }
+    }
 }

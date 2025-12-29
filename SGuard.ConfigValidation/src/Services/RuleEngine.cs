@@ -40,8 +40,10 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="pathResolver">Optional path resolver service. If not provided, a new instance will be created.</param>
     /// <param name="configValidator">Optional configuration validator for JSON-based validation.</param>
     /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
-    public RuleEngine(IConfigLoader configLoader, IFileValidator fileValidator, IValidatorFactory validatorFactory, ILogger<RuleEngine> logger,
-                      IOptions<SecurityOptions> securityOptions, IPathResolver? pathResolver = null, IConfigValidator? configValidator = null)
+    public RuleEngine(IConfigLoader configLoader, IFileValidator fileValidator, IValidatorFactory validatorFactory,
+        ILogger<RuleEngine> logger,
+        IOptions<SecurityOptions> securityOptions, IPathResolver? pathResolver = null,
+        IConfigValidator? configValidator = null)
     {
         System.ArgumentNullException.ThrowIfNull(configLoader);
         System.ArgumentNullException.ThrowIfNull(fileValidator);
@@ -104,18 +106,19 @@ public sealed class RuleEngine : IRuleEngine
     /// </code>
     /// </example>
     public async Task<RuleEngineResult> ValidateEnvironmentAsync(string configPath, string environmentId,
-                                                                 CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            var result = await ValidateEnvironmentInternalAsync(async () => await _configLoader.LoadConfigAsync(configPath, cancellationToken),
-                                                                environmentId,
-                                                                async (config, env) =>
-                                                                    await ValidateSingleEnvironmentAsync(
-                                                                        env, config, environmentId, configPath, cancellationToken),
-                                                                $"from config {configPath}", requirePath: true, cancellationToken);
+            var result = await ValidateEnvironmentInternalAsync(
+                async () => await _configLoader.LoadConfigAsync(configPath, cancellationToken),
+                environmentId,
+                async (config, env) =>
+                    await ValidateSingleEnvironmentAsync(
+                        env, config, environmentId, configPath, cancellationToken),
+                $"from config {configPath}", requirePath: true, cancellationToken);
 
             stopwatch.Stop();
             ValidationMetrics.RecordValidationDuration(stopwatch.ElapsedMilliseconds);
@@ -176,17 +179,19 @@ public sealed class RuleEngine : IRuleEngine
     /// Console.WriteLine($"  Failed: {failureCount}");
     /// </code>
     /// </example>
-    public async Task<RuleEngineResult> ValidateAllEnvironmentsAsync(string configPath, CancellationToken cancellationToken = default)
+    public async Task<RuleEngineResult> ValidateAllEnvironmentsAsync(string configPath,
+        CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            var result = await ValidateAllEnvironmentsCommonAsync(async () => await _configLoader.LoadConfigAsync(configPath, cancellationToken),
-                                                                  async config =>
-                                                                      await ValidateAllEnvironmentsInternalAsync(
-                                                                          config, configPath, cancellationToken), $"from config {configPath}",
-                                                                  cancellationToken);
+            var result = await ValidateAllEnvironmentsCommonAsync(
+                async () => await _configLoader.LoadConfigAsync(configPath, cancellationToken),
+                async config =>
+                    await ValidateAllEnvironmentsInternalAsync(
+                        config, configPath, cancellationToken), $"from config {configPath}",
+                cancellationToken);
 
             stopwatch.Stop();
             ValidationMetrics.RecordValidationDuration(stopwatch.ElapsedMilliseconds);
@@ -221,14 +226,15 @@ public sealed class RuleEngine : IRuleEngine
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="configJson"/> is null or empty, or when <paramref name="environmentId"/> is null or empty.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the JSON configuration is invalid or the environment is not found.</exception>
     public async Task<RuleEngineResult> ValidateEnvironmentFromJsonAsync(string configJson, string environmentId,
-                                                                         CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await ValidateEnvironmentInternalAsync(async () => await Task.FromResult(ParseConfigJson(configJson, cancellationToken)), environmentId,
-                                                      async (config, env) =>
-                                                          await Task.FromResult(ValidateSingleEnvironmentFromJson(env, config, environmentId, cancellationToken)),
-                                                      "from JSON", requirePath: false, cancellationToken);
+        return await ValidateEnvironmentInternalAsync(
+            async () => await Task.FromResult(ParseConfigJson(configJson, cancellationToken)), environmentId,
+            async (config, env) =>
+                await ValidateSingleEnvironmentFromJsonAsync(env, config, environmentId, cancellationToken),
+            "from JSON", requirePath: false, cancellationToken);
     }
 
     /// <summary>
@@ -239,13 +245,15 @@ public sealed class RuleEngine : IRuleEngine
     /// <returns>A <see cref="RuleEngineResult"/> containing validation results for all environments.</returns>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="configJson"/> is null or empty.</exception>
     /// <exception cref="SGuard.ConfigValidation.Exceptions.ConfigurationException">Thrown when the JSON configuration is invalid.</exception>
-    public async Task<RuleEngineResult> ValidateAllEnvironmentsFromJsonAsync(string configJson, CancellationToken cancellationToken = default)
+    public async Task<RuleEngineResult> ValidateAllEnvironmentsFromJsonAsync(string configJson,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return await ValidateAllEnvironmentsCommonAsync(async () => await Task.FromResult(ParseConfigJson(configJson, cancellationToken)),
-                                                        async config => await ValidateAllEnvironmentsFromJsonInternalAsync(config, cancellationToken),
-                                                        "from JSON", cancellationToken);
+        return await ValidateAllEnvironmentsCommonAsync(
+            async () => await Task.FromResult(ParseConfigJson(configJson, cancellationToken)),
+            async config => await ValidateAllEnvironmentsFromJsonInternalAsync(config, cancellationToken),
+            "from JSON", cancellationToken);
     }
 
     /// <summary>
@@ -260,14 +268,16 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Common validation logic for single environment validation (file-based or JSON-based).
     /// </summary>
-    private async Task<RuleEngineResult> ValidateEnvironmentInternalAsync(Func<Task<SGuardConfig>> loadConfig, string environmentId,
-                                                                          Func<SGuardConfig, Models.Environment, Task<FileValidationResult>>
-                                                                              validateEnvironment, string contextDescription,
-                                                                          bool requirePath = false, CancellationToken cancellationToken = default)
+    private async Task<RuleEngineResult> ValidateEnvironmentInternalAsync(Func<Task<SGuardConfig>> loadConfig,
+        string environmentId,
+        Func<SGuardConfig, Models.Environment, Task<FileValidationResult>>
+            validateEnvironment, string contextDescription,
+        bool requirePath = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(environmentId))
         {
-            _logger.LogWarning("Validation failed: Environment ID is null or empty. Context: {ContextDescription}", contextDescription);
+            _logger.LogWarning("Validation failed: Environment ID is null or empty. Context: {ContextDescription}",
+                contextDescription);
             var message = SR.ResourceManager.GetString(nameof(SR.RuleEngine_ValidationFailed_EnvironmentIdRequired));
 
             return RuleEngineResult.CreateError(
@@ -293,8 +303,10 @@ public sealed class RuleEngine : IRuleEngine
             // For file-based validation, check path validity
             if (requirePath && string.IsNullOrWhiteSpace(environment.Path))
             {
-                _logger.LogWarning("Environment {EnvironmentId} has an invalid or empty path. Context: {ContextDescription}", environmentId,
-                                   contextDescription);
+                _logger.LogWarning(
+                    "Environment {EnvironmentId} has an invalid or empty path. Context: {ContextDescription}",
+                    environmentId,
+                    contextDescription);
 
 
                 return RuleEngineResult.CreateError(
@@ -310,8 +322,9 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "File not found during validation of environment {EnvironmentId} {ContextDescription}. File path: {FilePath}",
-                             environmentId, contextDescription, ex.FileName ?? "unknown");
+            _logger.LogError(ex,
+                "File not found during validation of environment {EnvironmentId} {ContextDescription}. File path: {FilePath}",
+                environmentId, contextDescription, ex.FileName ?? "unknown");
             var message = SR.ResourceManager.GetString(nameof(SR.RuleEngine_ValidationFailed_FileNotFound));
 
             return RuleEngineResult.CreateError(
@@ -322,8 +335,9 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (ConfigurationException ex)
         {
-            _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId} {ContextDescription}. Error: {ErrorMessage}",
-                             environmentId, contextDescription, ex.Message);
+            _logger.LogError(ex,
+                "Configuration error during validation of environment {EnvironmentId} {ContextDescription}. Error: {ErrorMessage}",
+                environmentId, contextDescription, ex.Message);
 
             var message = SR.ResourceManager.GetString(nameof(SR.RuleEngine_ValidationFailed_ConfigurationError));
 
@@ -345,7 +359,7 @@ public sealed class RuleEngine : IRuleEngine
                 ex,
                 "Unexpected error during validation of environment {EnvironmentId} {ContextDescription}. Exception type: {ExceptionType}, Message: {ErrorMessage}",
                 environmentId, contextDescription, ex.GetType().Name, ex.Message);
-            
+
             return HandleValidationError(ex, environmentId, contextDescription);
         }
     }
@@ -354,14 +368,14 @@ public sealed class RuleEngine : IRuleEngine
     /// Common validation logic for all environments validation (file-based or JSON-based).
     /// </summary>
     private async Task<RuleEngineResult> ValidateAllEnvironmentsCommonAsync(Func<Task<SGuardConfig>> loadConfig,
-                                                                            Func<SGuardConfig, Task<List<FileValidationResult>>>
-                                                                                validateAllEnvironments, string contextDescription,
-                                                                            CancellationToken cancellationToken = default)
+        Func<SGuardConfig, Task<(List<FileValidationResult> Results, IReadOnlyList<Exception> CriticalExceptions)>>
+            validateAllEnvironments, string contextDescription,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             var config = await loadConfig();
 
             if (config.Environments.Count == 0)
@@ -371,8 +385,9 @@ public sealed class RuleEngine : IRuleEngine
                 return RuleEngineResult.CreateError(message ?? "No environments found in configuration.");
             }
 
-            _logger.LogInformation("Validating {EnvironmentCount} environments {ContextDescription}", config.Environments.Count, contextDescription);
-            var results = await validateAllEnvironments(config);
+            _logger.LogInformation("Validating {EnvironmentCount} environments {ContextDescription}",
+                config.Environments.Count, contextDescription);
+            var (results, criticalExceptions) = await validateAllEnvironments(config);
 
             // Use ErrorCount property to avoid nested enumeration
             var totalErrors = results.Sum(r => r.ErrorCount);
@@ -382,12 +397,21 @@ public sealed class RuleEngine : IRuleEngine
                 "Validation completed for all environments {ContextDescription}. Successful: {SuccessfulCount}, Total errors: {TotalErrors}",
                 contextDescription, successfulEnvironments, totalErrors);
 
-            return RuleEngineResult.CreateSuccess(results);
+            // Log critical exceptions if any occurred
+            if (criticalExceptions.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Critical exceptions occurred during parallel validation of {EnvironmentCount} environments {ContextDescription}. Partial results are available. Critical exception count: {CriticalExceptionCount}",
+                    config.Environments.Count, contextDescription, criticalExceptions.Count);
+            }
+
+            return RuleEngineResult.CreateSuccess(results, criticalExceptions);
         }
         catch (FileNotFoundException ex)
         {
-            _logger.LogError(ex, "File not found during validation of all environments {ContextDescription}. File path: {FilePath}",
-                             contextDescription, ex.FileName ?? "unknown");
+            _logger.LogError(ex,
+                "File not found during validation of all environments {ContextDescription}. File path: {FilePath}",
+                contextDescription, ex.FileName ?? "unknown");
 
             return RuleEngineResult.CreateError(
                 string.Format(
@@ -397,12 +421,14 @@ public sealed class RuleEngine : IRuleEngine
         }
         catch (ConfigurationException ex)
         {
-            _logger.LogError(ex, "Configuration error during validation of all environments {ContextDescription}. Error: {ErrorMessage}",
-                             contextDescription, ex.Message);
+            _logger.LogError(ex,
+                "Configuration error during validation of all environments {ContextDescription}. Error: {ErrorMessage}",
+                contextDescription, ex.Message);
 
             return RuleEngineResult.CreateError(
                 string.Format(
-                    SR.ResourceManager.GetString(nameof(SR.RuleEngine_ValidationFailed_ConfigurationError_AllEnvironments)) ??
+                    SR.ResourceManager.GetString(
+                        nameof(SR.RuleEngine_ValidationFailed_ConfigurationError_AllEnvironments)) ??
                     "Validation failed: Configuration error detected. Context: {0}. Error: {1}. Please review the configuration file structure and fix any validation errors.",
                     contextDescription, ex.Message), ex);
         }
@@ -442,13 +468,17 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Creates an error result when environment is not found.
     /// </summary>
-    private RuleEngineResult CreateEnvironmentNotFoundError(SGuardConfig config, string environmentId, string? contextDescription = null)
+    private RuleEngineResult CreateEnvironmentNotFoundError(SGuardConfig config, string environmentId,
+        string? contextDescription = null)
     {
         var availableEnvironments = string.Join(", ", config.Environments.Select(e => e.Id));
-        var contextInfo = !string.IsNullOrWhiteSpace(contextDescription) ? $" Context: {contextDescription}." : string.Empty;
+        var contextInfo = !string.IsNullOrWhiteSpace(contextDescription)
+            ? $" Context: {contextDescription}."
+            : string.Empty;
 
-        _logger.LogWarning("Environment {EnvironmentId} not found in configuration. Available environments: {AvailableEnvironments}.{ContextInfo}",
-                           environmentId, availableEnvironments, contextInfo);
+        _logger.LogWarning(
+            "Environment {EnvironmentId} not found in configuration. Available environments: {AvailableEnvironments}.{ContextInfo}",
+            environmentId, availableEnvironments, contextInfo);
         var message = SR.ResourceManager.GetString(nameof(SR.RuleEngine_EnvironmentNotFound));
 
         return RuleEngineResult.CreateError(
@@ -461,8 +491,9 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Validates a single environment from a file-based configuration.
     /// </summary>
-    private async Task<FileValidationResult> ValidateSingleEnvironmentAsync(Models.Environment environment, SGuardConfig config, string environmentId,
-                                                                            string configPath, CancellationToken cancellationToken = default)
+    private async Task<FileValidationResult> ValidateSingleEnvironmentAsync(Models.Environment environment,
+        SGuardConfig config, string environmentId,
+        string configPath, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var applicableRules = GetApplicableRules(config, environmentId, cancellationToken);
@@ -470,9 +501,11 @@ public sealed class RuleEngine : IRuleEngine
         // Resolve a relative path to an absolute path based on the config file location
         var appSettingsPath = _pathResolver.ResolvePath(environment.Path, configPath);
 
-        var appSettings = await _configLoader.LoadAppSettingsAsync(appSettingsPath, cancellationToken).ConfigureAwait(false);
+        var appSettings = await _configLoader.LoadAppSettingsAsync(appSettingsPath, cancellationToken)
+            .ConfigureAwait(false);
 
-        return _fileValidator.ValidateFile(appSettingsPath, applicableRules, appSettings);
+        return await _fileValidator.ValidateFileAsync(appSettingsPath, applicableRules, appSettings, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -493,8 +526,9 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="config">The configuration containing rules.</param>
     /// <param name="environmentId">The ID of the environment to validate.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="FileValidationResult"/> containing validation results. Note that required validators will fail since no appsettings are provided.</returns>
-    private FileValidationResult ValidateSingleEnvironmentFromJson(Models.Environment environment, SGuardConfig config, string environmentId, CancellationToken cancellationToken = default)
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="FileValidationResult"/> containing validation results. Note that required validators will fail since no appsettings are provided.</returns>
+    private async Task<FileValidationResult> ValidateSingleEnvironmentFromJsonAsync(Models.Environment environment,
+        SGuardConfig config, string environmentId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -511,16 +545,20 @@ public sealed class RuleEngine : IRuleEngine
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        return _fileValidator.ValidateFile(environment.Id, applicableRules, new Dictionary<string, object>());
+        return await _fileValidator
+            .ValidateFileAsync(environment.Id, applicableRules, new Dictionary<string, object>(), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
     /// Validates all environments from a file-based configuration.
     /// </summary>
-    private async Task<List<FileValidationResult>> ValidateAllEnvironmentsInternalAsync(SGuardConfig config, string configPath,
-                                                                                        CancellationToken cancellationToken = default)
+    /// <returns>A tuple containing the validation results and any critical exceptions that occurred.</returns>
+    private async Task<(List<FileValidationResult> Results, IReadOnlyList<Exception> CriticalExceptions)>
+        ValidateAllEnvironmentsInternalAsync(SGuardConfig config, string configPath,
+            CancellationToken cancellationToken = default)
     {
-        // Use ConcurrentBag for lock-free thread-safe collection
+        // Use ConcurrentBag for thread-safe collection in parallel execution
         var results = new ConcurrentBag<FileValidationResult>();
         // Track critical exceptions separately to throw them after all environments are processed
         var criticalExceptions = new ConcurrentBag<Exception>();
@@ -549,13 +587,15 @@ public sealed class RuleEngine : IRuleEngine
                     validationResult = new FileValidationResult(environment.Id,
                     [
                         ValidationResult.Failure(
-                            ValidationMessageFormatter.FormatEnvironmentError(environment.Id, "has an invalid or empty path", ""), "system",
+                            ValidationMessageFormatter.FormatEnvironmentError(environment.Id,
+                                "has an invalid or empty path", ""), "system",
                             environment.Id, null)
                     ]);
                 }
                 else
                 {
-                    validationResult = await ValidateSingleEnvironmentAsync(environment, config, environment.Id, configPath, ct);
+                    validationResult =
+                        await ValidateSingleEnvironmentAsync(environment, config, environment.Id, configPath, ct);
                     LogEnvironmentValidationResult(environment.Id, validationResult);
                 }
 
@@ -582,7 +622,8 @@ public sealed class RuleEngine : IRuleEngine
                 _logger.LogError(ex, "File not found during validation of environment {EnvironmentId}", environment.Id);
 
                 var errorValidation = ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatFileNotFoundError(environment.Id, environment.Path, ex), "system", environment.Path, null, ex);
+                    ValidationMessageFormatter.FormatFileNotFoundError(environment.Id, environment.Path, ex), "system",
+                    environment.Path, null, ex);
                 validationResult = new FileValidationResult(environment.Id, [errorValidation]);
             }
             catch (ConfigurationException ex)
@@ -592,10 +633,12 @@ public sealed class RuleEngine : IRuleEngine
                 ValidationMetrics.RecordEnvironmentValidation();
                 ValidationMetrics.RecordValidationFailure();
 
-                _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId}", environment.Id);
+                _logger.LogError(ex, "Configuration error during validation of environment {EnvironmentId}",
+                    environment.Id);
 
-                var errorValidation = ValidationResult.Failure(ValidationMessageFormatter.FormatConfigurationError(environment.Id, ex.Message, ex),
-                                                               "system", environment.Path, null, ex);
+                var errorValidation = ValidationResult.Failure(
+                    ValidationMessageFormatter.FormatConfigurationError(environment.Id, ex.Message, ex),
+                    "system", environment.Path, null, ex);
                 validationResult = new FileValidationResult(environment.Id, [errorValidation]);
             }
             catch (Exception ex)
@@ -609,54 +652,51 @@ public sealed class RuleEngine : IRuleEngine
                 // This allows other environments to be processed, preserving partial results
                 if (Throw.IsCriticalException(ex))
                 {
-                    _logger.LogCritical(ex, "Critical exception during validation of environment {EnvironmentId}. This will be thrown after all environments are processed.", environment.Id);
+                    _logger.LogCritical(ex,
+                        "Critical exception during validation of environment {EnvironmentId}. This will be included in the result after all environments are processed.",
+                        environment.Id);
                     criticalExceptions.Add(ex);
                 }
                 else
                 {
-                    _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId}", environment.Id);
+                    _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId}",
+                        environment.Id);
                 }
 
                 // Create an error result for this environment but continue with others
                 var errorValidation = ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatFailedToLoadEnvironmentError(environment.Id, ex.Message, ex), "system", environment.Path, null,
+                    ValidationMessageFormatter.FormatFailedToLoadEnvironmentError(environment.Id, ex.Message, ex),
+                    "system", environment.Path, null,
                     ex);
 
                 validationResult = new FileValidationResult(environment.Path, [errorValidation]);
             }
 
-            // Thread-safe add to a results collection (ConcurrentBag is lock-free)
+            // Thread-safe add to results collection (ConcurrentBag is thread-safe)
             results.Add(validationResult);
         });
 
-        // After all environments are processed, throw critical exceptions if any occurred
-        // This ensures partial results are preserved while still signaling critical failures
-        if (criticalExceptions.Count > 0)
-        {
-            var exceptions = criticalExceptions.ToList();
-            if (exceptions.Count == 1)
-            {
-                throw exceptions[0];
-            }
+        // Convert to list and sort by path for deterministic output
+        // Sorting ensures consistent ordering across multiple runs
+        var resultsList = results.ToList();
+        resultsList.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
 
-            throw new AggregateException(
-                "One or more critical exceptions occurred during parallel validation. Partial results may be available.",
-                exceptions);
-        }
-
-        // Convert ConcurrentBag to List and sort by path for deterministic output
-        // Sorting ensures consistent ordering across multiple runs, as ConcurrentBag does not guarantee order
-        return results.OrderBy(r => r.Path, StringComparer.OrdinalIgnoreCase).ToList();
+        // Return results along with critical exceptions instead of throwing them
+        // This preserves partial results while still allowing callers to handle critical failures
+        var exceptionsList = criticalExceptions.Count > 0 ? criticalExceptions.ToList() : [];
+        return (resultsList, exceptionsList);
     }
 
     /// <summary>
     /// Validates all environments from JSON configuration.
     /// Uses parallel execution for better performance, similar to file-based validation.
     /// </summary>
-    private async Task<List<FileValidationResult>> ValidateAllEnvironmentsFromJsonInternalAsync(SGuardConfig config, CancellationToken cancellationToken = default)
+    /// <returns>A tuple containing the validation results and any critical exceptions that occurred.</returns>
+    private async Task<(List<FileValidationResult> Results, IReadOnlyList<Exception> CriticalExceptions)>
+        ValidateAllEnvironmentsFromJsonInternalAsync(SGuardConfig config, CancellationToken cancellationToken = default)
     {
-        // Use ConcurrentBag for lock-free thread-safe collection
-        var results = new ConcurrentBag<FileValidationResult>();
+        // Use pre-sized List with lock for thread-safe collection to avoid unnecessary allocations
+        var results = new List<FileValidationResult>(config.Environments.Count);
         // Track critical exceptions separately to throw them after all environments are processed
         var criticalExceptions = new ConcurrentBag<Exception>();
         var maxParallelism = _securityOptions.MaxParallelEnvironments;
@@ -677,9 +717,10 @@ public sealed class RuleEngine : IRuleEngine
 
             try
             {
-                // ValidateSingleEnvironmentFromJson is CPU-bound, run it on thread pool
+                // ValidateSingleEnvironmentFromJsonAsync is async, call it directly
                 // Pass cancellation token to allow cancellation during validation
-                validationResult = await Task.Run(() => ValidateSingleEnvironmentFromJson(environment, config, environment.Id, ct), ct);
+                validationResult = await ValidateSingleEnvironmentFromJsonAsync(environment, config, environment.Id, ct)
+                    .ConfigureAwait(false);
                 LogEnvironmentValidationResult(environment.Id, validationResult);
 
                 envStopwatch.Stop();
@@ -706,44 +747,41 @@ public sealed class RuleEngine : IRuleEngine
                 // This allows other environments to be processed, preserving partial results
                 if (Throw.IsCriticalException(ex))
                 {
-                    _logger.LogCritical(ex, "Critical exception during validation of environment {EnvironmentId}. This will be thrown after all environments are processed.", environment.Id);
+                    _logger.LogCritical(ex,
+                        "Critical exception during validation of environment {EnvironmentId}. This will be included in the result after all environments are processed.",
+                        environment.Id);
                     criticalExceptions.Add(ex);
                 }
                 else
                 {
-                    _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId}", environment.Id);
+                    _logger.LogError(ex, "Unexpected error during validation of environment {EnvironmentId}",
+                        environment.Id);
                 }
 
                 // Create an error result for this environment but continue with others
                 var errorValidation = ValidationResult.Failure(
-                    ValidationMessageFormatter.FormatFailedToLoadEnvironmentError(environment.Id, ex.Message, ex), "system", environment.Id, null,
+                    ValidationMessageFormatter.FormatFailedToLoadEnvironmentError(environment.Id, ex.Message, ex),
+                    "system", environment.Id, null,
                     ex);
 
                 validationResult = new FileValidationResult(environment.Id, [errorValidation]);
             }
 
-            // Thread-safe add to a results collection (ConcurrentBag is lock-free)
-            results.Add(validationResult);
+            // Thread-safe add to a results collection using lock
+            lock (results)
+            {
+                results.Add(validationResult);
+            }
         });
 
-        // After all environments are processed, throw critical exceptions if any occurred
-        // This ensures partial results are preserved while still signaling critical failures
-        if (criticalExceptions.Count > 0)
-        {
-            var exceptions = criticalExceptions.ToList();
-            if (exceptions.Count == 1)
-            {
-                throw exceptions[0];
-            }
+        // Sort by path for deterministic output (in-place sort, no additional allocation)
+        // Sorting ensures consistent ordering across multiple runs
+        results.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.OrdinalIgnoreCase));
 
-            throw new AggregateException(
-                "One or more critical exceptions occurred during parallel validation. Partial results may be available.",
-                exceptions);
-        }
-
-        // Convert ConcurrentBag to List and sort by path for deterministic output
-        // Sorting ensures consistent ordering across multiple runs, as ConcurrentBag does not guarantee order
-        return results.OrderBy(r => r.Path, StringComparer.OrdinalIgnoreCase).ToList();
+        // Return results along with critical exceptions instead of throwing them
+        // This preserves partial results while still allowing callers to handle critical failures
+        var exceptionsList = criticalExceptions.Count > 0 ? criticalExceptions.ToList() : [];
+        return (results, exceptionsList);
     }
 
     /// <summary>
@@ -755,7 +793,8 @@ public sealed class RuleEngine : IRuleEngine
 
         if (errorCount > 0)
         {
-            _logger.LogWarning("Validation completed for environment {EnvironmentId} with {ErrorCount} errors", environmentId, errorCount);
+            _logger.LogWarning("Validation completed for environment {EnvironmentId} with {ErrorCount} errors",
+                environmentId, errorCount);
         }
         else
         {
@@ -772,7 +811,8 @@ public sealed class RuleEngine : IRuleEngine
 
         if (errorCount > 0)
         {
-            _logger.LogWarning("Environment {EnvironmentId} validation completed with {ErrorCount} errors", environmentId, errorCount);
+            _logger.LogWarning("Environment {EnvironmentId} validation completed with {ErrorCount} errors",
+                environmentId, errorCount);
         }
     }
 
@@ -830,7 +870,8 @@ public sealed class RuleEngine : IRuleEngine
             }
 
             var errorMessage = string.Join(System.Environment.NewLine, validationErrors);
-            throw ConfigurationException(nameof(SR.ConfigurationException_JsonValidationFailed), System.Environment.NewLine, errorMessage);
+            throw ConfigurationException(nameof(SR.ConfigurationException_JsonValidationFailed),
+                System.Environment.NewLine, errorMessage);
         }
         catch (JsonException ex)
         {
@@ -845,7 +886,8 @@ public sealed class RuleEngine : IRuleEngine
     /// <param name="environmentId">The ID of the environment to get rules for.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
     /// <returns>A list of rules applicable to the specified environment.</returns>
-    private static List<Rule> GetApplicableRules(SGuardConfig config, string environmentId, CancellationToken cancellationToken = default)
+    private static List<Rule> GetApplicableRules(SGuardConfig config, string environmentId,
+        CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -878,30 +920,35 @@ public sealed class RuleEngine : IRuleEngine
     /// <summary>
     /// Handles validation errors and converts them to RuleEngineResult.
     /// </summary>
-    private static RuleEngineResult HandleValidationError(Exception ex, string? environmentId = null, string? contextDescription = null)
+    private static RuleEngineResult HandleValidationError(Exception ex, string? environmentId = null,
+        string? contextDescription = null)
     {
         return ex switch
         {
             FileNotFoundException fileEx => RuleEngineResult.CreateError(
-                ValidationMessageFormatter.FormatValidationFailureWithContext("Validation failed: Required file not found.", environmentId,
-                                                                              contextDescription,
-                                                                              $"File path: '{fileEx.FileName ?? "unknown"}'. Error: {ex.Message}.",
-                                                                              "Please ensure the configuration file and referenced app settings files exist and are accessible."),
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Required file not found.", environmentId,
+                    contextDescription,
+                    $"File path: '{fileEx.FileName ?? "unknown"}'. Error: {ex.Message}.",
+                    "Please ensure the configuration file and referenced app settings files exist and are accessible."),
                 ex),
             Exceptions.ConfigurationException => RuleEngineResult.CreateError(
-                ValidationMessageFormatter.FormatValidationFailureWithContext("Validation failed: Configuration error detected.", environmentId,
-                                                                              contextDescription, $"Error: {ex.Message}.",
-                                                                              "Please review the configuration file structure and fix any validation errors."),
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Configuration error detected.", environmentId,
+                    contextDescription, $"Error: {ex.Message}.",
+                    "Please review the configuration file structure and fix any validation errors."),
                 ex),
             ValidationException => RuleEngineResult.CreateError(
-                ValidationMessageFormatter.FormatValidationFailureWithContext("Validation failed: Validation error occurred.", environmentId,
-                                                                              contextDescription, $"Error: {ex.Message}.",
-                                                                              "Please review the validation rules and fix any rule violations."), ex),
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Validation error occurred.", environmentId,
+                    contextDescription, $"Error: {ex.Message}.",
+                    "Please review the validation rules and fix any rule violations."), ex),
             _ => RuleEngineResult.CreateError(
-                ValidationMessageFormatter.FormatValidationFailureWithContext("Validation failed: Unexpected error occurred.", environmentId,
-                                                                              contextDescription,
-                                                                              $"Exception type: {ex.GetType().Name}. Error: {ex.Message}.",
-                                                                              "This is an unexpected error. Please check the logs for more details and contact support if the issue persists."),
+                ValidationMessageFormatter.FormatValidationFailureWithContext(
+                    "Validation failed: Unexpected error occurred.", environmentId,
+                    contextDescription,
+                    $"Exception type: {ex.GetType().Name}. Error: {ex.Message}.",
+                    "This is an unexpected error. Please check the logs for more details and contact support if the issue persists."),
                 ex)
         };
     }

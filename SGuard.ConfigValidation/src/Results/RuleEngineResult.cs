@@ -34,12 +34,28 @@ public sealed class RuleEngineResult
     public FileValidationResult? SingleResult { get; private init; }
 
     /// <summary>
+    /// Gets the list of critical exceptions that occurred during parallel validation.
+    /// These exceptions are captured but do not prevent partial results from being returned.
+    /// This allows users to see which environments succeeded even when some failed with critical exceptions.
+    /// </summary>
+    public IReadOnlyList<Exception> CriticalExceptions { get; private init; } = [];
+
+    /// <summary>
     /// Creates a successful result with multiple file validation results.
     /// </summary>
     /// <param name="results">The list of file validation results.</param>
     /// <returns>A new <see cref="RuleEngineResult"/> instance indicating success with multiple results.</returns>
     public static RuleEngineResult CreateSuccess(List<FileValidationResult> results)
         => new() { IsSuccess = true, ValidationResults = results };
+
+    /// <summary>
+    /// Creates a successful result with multiple file validation results and optional critical exceptions.
+    /// </summary>
+    /// <param name="results">The list of file validation results.</param>
+    /// <param name="criticalExceptions">Optional list of critical exceptions that occurred during parallel validation.</param>
+    /// <returns>A new <see cref="RuleEngineResult"/> instance indicating success with multiple results and any critical exceptions.</returns>
+    public static RuleEngineResult CreateSuccess(List<FileValidationResult> results, IReadOnlyList<Exception>? criticalExceptions)
+        => new() { IsSuccess = true, ValidationResults = results, CriticalExceptions = criticalExceptions ?? [] };
 
     /// <summary>
     /// Creates a successful result with a single file validation result.

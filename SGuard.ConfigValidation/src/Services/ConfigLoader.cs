@@ -338,6 +338,7 @@ public sealed class ConfigLoader : IConfigLoader
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
+                
                 using var document = JsonDocument.Parse(json, JsonOptions.Document);
                 
                 // Pre-allocate dictionary with estimated capacity based on JSON size

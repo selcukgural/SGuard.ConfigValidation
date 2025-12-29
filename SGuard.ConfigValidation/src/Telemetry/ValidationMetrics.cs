@@ -7,9 +7,19 @@ namespace SGuard.ConfigValidation.Telemetry;
 /// Uses System.Diagnostics.Metrics for .NET 8+ built-in metrics support.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This class provides static methods to record various validation and cache metrics.
 /// All metrics are registered under the "SGuard.ConfigValidation" meter.
-/// Thread-safe and intended for internal use only.
+/// </para>
+/// <para>
+/// Thread-safety: All methods in this class are thread-safe and can be called concurrently from multiple threads.
+/// The underlying System.Diagnostics.Metrics API (Counter&lt;T&gt;.Add and Histogram&lt;T&gt;.Record) is designed
+/// to be thread-safe for high-concurrency scenarios. All static fields are readonly and initialized once,
+/// ensuring safe concurrent access without additional synchronization mechanisms.
+/// </para>
+/// <para>
+/// Intended for internal use only.
+/// </para>
 /// </remarks>
 internal static class ValidationMetrics
 {

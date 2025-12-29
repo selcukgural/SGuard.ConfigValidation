@@ -83,22 +83,6 @@ public sealed class SecurityOptions
     public int MaxParallelEnvironments { get; set; } = SecurityConstants.MaxParallelEnvironments;
 
     /// <summary>
-    /// Maximum script output size in bytes.
-    /// Default: 1 MB (1,048,576 bytes)
-    /// Hard limit: 10 MB (10,485,760 bytes)
-    /// Script hooks output exceeding this limit will be truncated to prevent DoS attacks.
-    /// </summary>
-    public long MaxScriptOutputSizeBytes { get; set; } = SecurityConstants.MaxScriptOutputSizeBytes;
-
-    /// <summary>
-    /// Maximum number of errors to include in hook template variables.
-    /// Default: 100
-    /// Hard limit: 1000
-    /// Prevents memory spikes from extremely large error lists in hook notifications.
-    /// </summary>
-    public int MaxHookErrorCount { get; set; } = SecurityConstants.MaxHookErrorCount;
-
-    /// <summary>
     /// File size threshold in bytes for using streaming when loading app settings.
     /// Default: 512 KB (524,288 bytes)
     /// Hard limit: 10 MB (10,485,760 bytes)
@@ -195,24 +179,6 @@ public sealed class SecurityOptions
                 "Security option 'MaxParallelEnvironments' ({Value}) exceeds hard limit ({HardLimit}). Clamping to hard limit.",
                 MaxParallelEnvironments, SecurityConstants.MaxParallelEnvironmentsHardLimit);
             MaxParallelEnvironments = SecurityConstants.MaxParallelEnvironmentsHardLimit;
-            clamped = true;
-        }
-
-        if (MaxScriptOutputSizeBytes > SecurityConstants.MaxScriptOutputSizeBytesHardLimit)
-        {
-            logger?.LogWarning(
-                "Security option 'MaxScriptOutputSizeBytes' ({Value} bytes) exceeds hard limit ({HardLimit} bytes). Clamping to hard limit.",
-                MaxScriptOutputSizeBytes, SecurityConstants.MaxScriptOutputSizeBytesHardLimit);
-            MaxScriptOutputSizeBytes = SecurityConstants.MaxScriptOutputSizeBytesHardLimit;
-            clamped = true;
-        }
-
-        if (MaxHookErrorCount > SecurityConstants.MaxHookErrorCountHardLimit)
-        {
-            logger?.LogWarning(
-                "Security option 'MaxHookErrorCount' ({Value}) exceeds hard limit ({HardLimit}). Clamping to hard limit.",
-                MaxHookErrorCount, SecurityConstants.MaxHookErrorCountHardLimit);
-            MaxHookErrorCount = SecurityConstants.MaxHookErrorCountHardLimit;
             clamped = true;
         }
 

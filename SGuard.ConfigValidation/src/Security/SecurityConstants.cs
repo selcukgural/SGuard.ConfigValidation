@@ -64,18 +64,6 @@ public static class SecurityConstants
     public static int MaxParallelEnvironments => Environment.ProcessorCount;
 
     /// <summary>
-    /// Default maximum script output size in bytes (1 MB).
-    /// Script hooks output exceeding this limit will be truncated to prevent DoS attacks.
-    /// </summary>
-    public const long MaxScriptOutputSizeBytes = 1024 * 1024; // 1 MB
-
-    /// <summary>
-    /// Default maximum number of errors to include in hook template variables (100).
-    /// Prevents memory spikes from extremely large error lists in hook notifications.
-    /// </summary>
-    public const int MaxHookErrorCount = 100;
-
-    /// <summary>
     /// Default file size threshold in bytes for using streaming when loading app settings (512 KB).
     /// Files larger than this threshold will use streaming for better memory efficiency.
     /// Smaller threshold values use less memory but may have slightly higher overhead for small files.
@@ -141,20 +129,6 @@ public static class SecurityConstants
     /// Prevents resource exhaustion from excessive parallelization.
     /// </summary>
     public const int MaxParallelEnvironmentsHardLimit = 100;
-
-    /// <summary>
-    /// Hard limit for maximum script output size in bytes (10 MB).
-    /// This is the absolute maximum that cannot be exceeded even if configured higher.
-    /// Prevents DoS attacks through extremely large script outputs.
-    /// </summary>
-    public const long MaxScriptOutputSizeBytesHardLimit = 10 * 1024 * 1024; // 10 MB
-
-    /// <summary>
-    /// Hard limit for maximum number of errors to include in hook template variables (1000).
-    /// This is the absolute maximum that cannot be exceeded even if configured higher.
-    /// Prevents memory spikes from extremely large error lists.
-    /// </summary>
-    public const int MaxHookErrorCountHardLimit = 1000;
 
     /// <summary>
     /// Hard limit for file size threshold in bytes for using streaming (10 MB).

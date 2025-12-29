@@ -11,8 +11,8 @@
         <Authors>SGuard Contributors</Authors>
         <Description>A lightweight library to catch critical configuration issues before runtime. Supports JSON and YAML configuration files with validation rules.</Description>
         <!-- TODO: Replace with actual repository URL before publishing -->
-        <PackageProjectUrl>https://github.com/sguard/SGuard.ConfigChecker</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/sguard/SGuard.ConfigChecker</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/sguard/SGuard.ConfigValidation</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/sguard/SGuard.ConfigValidation</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageTags>configuration;validation;config-checker;yaml;json;validation-rules</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -21,12 +21,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
       <PackageReference Include="NJsonSchema" Version="11.0.2" />
       <PackageReference Include="YamlDotNet" Version="16.0.0" />
@@ -50,7 +51,7 @@
 
     <ItemGroup>
       <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-        <_Parameter1>SGuard.ConfigValidation.Tests</_Parameter1>
+        <_Parameter1>SGuard.ConfigValidation.Test</_Parameter1>
       </AssemblyAttribute>
     </ItemGroup>
 

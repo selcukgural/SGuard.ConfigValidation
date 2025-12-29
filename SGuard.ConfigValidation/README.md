@@ -1,11 +1,11 @@
-# SGuard.ConfigChecker
+# SGuard.ConfigValidation
 
 A lightweight tool to catch critical configuration issues **before runtime**.
 
 ## ✨ Why?
 
 Misconfigured environments, missing connection strings, or wrong URLs can cause major issues after deployment.  
-**SGuard.ConfigChecker** helps you detect these problems **early**, during application startup or in your CI/CD pipeline.
+**SGuard.ConfigValidation** helps you detect these problems **early**, during application startup or in your CI/CD pipeline.
 
 ## 🚀 Features
 
@@ -35,7 +35,6 @@ Misconfigured environments, missing connection strings, or wrong URLs can cause 
 - **JSON Schema Validation**: Validate `sguard.json` against JSON Schema for structure validation
 - **Custom Validator Plugins**: Extend validation capabilities with custom validator plugins
 - **Performance Optimizations**: Built-in caching for path resolution, schema validation, and reflection operations
-- **Post-Validation Hooks**: Execute scripts, webhooks, or send notifications (Slack/Teams) after validation completes. Supports environment-specific hooks and template variables for dynamic content.
 
 ## 📖 Usage
 
@@ -50,9 +49,8 @@ dotnet run -- validate
 # Validate specific environment
 dotnet run -- validate --env dev
 
-# Validate with hooks (hooks execute automatically if configured in sguard.json)
+# Validate specific environment
 dotnet run -- validate --env prod
-# Hooks configured in sguard.json will execute automatically after validation
 
 # Validate with custom config file
 dotnet run -- validate --config custom-sguard.json
@@ -84,7 +82,7 @@ dotnet run -- validate --verbose
 
 ## 📂 Configuration Format
 
-SGuard.ConfigChecker supports **JSON** (default) and **YAML** configuration formats. JSON is the default format and is used for both `sguard.json` configuration files and `appsettings.json` files.
+SGuard.ConfigValidation supports **JSON** (default) and **YAML** configuration formats. JSON is the default format and is used for both `sguard.json` configuration files and `appsettings.json` files.
 
 ### Example `sguard.json` (JSON Format)
 
@@ -163,59 +161,7 @@ SGuard.ConfigChecker supports **JSON** (default) and **YAML** configuration form
         ]
       }
     }
-  ],
-  "hooks": {
-    "global": {
-      "onSuccess": [
-        {
-          "type": "webhook",
-          "url": "https://api.example.com/webhook/success",
-          "method": "POST",
-          "headers": {
-            "Authorization": "Bearer ${WEBHOOK_TOKEN}",
-            "Content-Type": "application/json"
-          },
-          "body": {
-            "status": "{{status}}",
-            "environment": "{{environment}}",
-            "message": "Validation succeeded"
-          }
-        }
-      ],
-      "onFailure": [
-        {
-          "type": "notification",
-          "provider": "slack",
-          "webhookUrl": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
-          "channel": "#alerts",
-          "message": "Validation failed for {{environment}}",
-          "color": "{{statusColor}}"
-        }
-      ]
-    },
-    "environments": {
-      "prod": {
-        "onSuccess": [
-          {
-            "type": "script",
-            "command": "./scripts/deploy.sh",
-            "arguments": ["--env", "prod"],
-            "timeout": 30000
-          }
-        ],
-        "onFailure": [
-          {
-            "type": "notification",
-            "provider": "teams",
-            "webhookUrl": "https://outlook.office.com/webhook/YOUR/WEBHOOK/URL",
-            "title": "Production Validation Failed",
-            "summary": "Environment: {{environment}}",
-            "themeColor": "{{statusColor}}"
-          }
-        ]
-      }
-    }
-  }
+  ]
 }
 ```
 
@@ -233,21 +179,6 @@ SGuard.ConfigChecker supports **JSON** (default) and **YAML** configuration form
   - **rule** (object, **required**): Rule definition. Must not be null.
     - **id** (string, **required**): Rule detail identifier. Must not be null or empty.
     - **conditions** (array, **required**): List of validation conditions. Must contain at least one condition.
-- **hooks** (object, **optional**): Post-validation hooks configuration. Hooks are executed after validation completes.
-  - **global** (object, **optional**): Global hooks that run for all environments.
-    - **onSuccess** (array, **optional**): Hooks to execute when validation succeeds (no errors).
-    - **onFailure** (array, **optional**): Hooks to execute when validation fails (has errors or system error).
-    - **onValidationError** (array, **optional**): Hooks to execute when validation errors are found (exit code 1).
-    - **onSystemError** (array, **optional**): Hooks to execute when a system error occurs (exit code 2).
-  - **environments** (object, **optional**): Environment-specific hooks. Key is the environment ID.
-    - **[environmentId]** (object): Hooks configuration for a specific environment.
-      - **onSuccess** (array, **optional**): Hooks to execute when validation succeeds for this environment.
-      - **onFailure** (array, **optional**): Hooks to execute when validation fails for this environment.
-      - **key** (string, **required**): Configuration key to validate (supports colon-separated nested keys). Must not be null or empty.
-      - **condition** (array, **required**): List of validators to apply. Must contain at least one validator.
-        - **validator** (string, **required**): Validator type (required, min_len, max_len, eq, ne, gt, gte, lt, lte, in). Must not be null or empty. Must be one of the supported validator types.
-        - **value** (any, **optional**): Value for comparison validators. Optional for "required" validator, but required for: min_len, max_len, eq, ne, gt, gte, lt, lte, in.
-        - **message** (string, **required**): Error message to display if validation fails. Must not be null or empty.
 
 ## 🔧 Programmatic Usage
 
@@ -282,7 +213,7 @@ var ruleEngine = new RuleEngine(
     securityOptions);
 
 // Validate environment
-var result = ruleEngine.ValidateEnvironment("sguard.json", "prod");
+var result = await ruleEngine.ValidateEnvironmentAsync("sguard.json", "prod");
 
 if (result.IsSuccess && !result.HasValidationErrors)
 {
@@ -336,7 +267,7 @@ var serviceProvider = services.BuildServiceProvider();
 var ruleEngine = serviceProvider.GetRequiredService<IRuleEngine>();
 
 // Example: Validate all environments
-var result = ruleEngine.ValidateAllEnvironments("sguard.json");
+var result = await ruleEngine.ValidateAllEnvironmentsAsync("sguard.json");
 if (result.IsSuccess)
 {
     Console.WriteLine($"Validated {result.ValidationResults.Count} environment(s)");
@@ -385,7 +316,7 @@ var serviceProvider = services.BuildServiceProvider();
 var ruleEngine = serviceProvider.GetRequiredService<IRuleEngine>();
 
 // Example: Validate all environments
-var result = ruleEngine.ValidateAllEnvironments("sguard.json");
+var result = await ruleEngine.ValidateAllEnvironmentsAsync("sguard.json");
 if (result.IsSuccess)
 {
     Console.WriteLine($"Validated {result.ValidationResults.Count} environment(s)");
@@ -627,17 +558,18 @@ var ruleEngine = new RuleEngine(
 
 try
 {
-    var result = ruleEngine.ValidateEnvironment("sguard.json", "prod");
+    var result = await ruleEngine.ValidateEnvironmentAsync("sguard.json", "prod");
     
     if (result.IsSuccess)
     {
         if (result.HasValidationErrors)
         {
             Console.WriteLine("Validation completed with errors:");
-            foreach (var validationResult in result.ValidationResults)
+            var fileResult = result.SingleResult ?? result.ValidationResults.FirstOrDefault();
+            if (fileResult != null)
             {
-                Console.WriteLine($"File: {validationResult.Path}");
-                foreach (var error in validationResult.Errors)
+                Console.WriteLine($"File: {fileResult.Path}");
+                foreach (var error in fileResult.Errors)
                 {
                     Console.WriteLine($"  Key: {error.Key}");
                     Console.WriteLine($"  Error: {error.Message}");
@@ -691,7 +623,7 @@ var ruleEngine = new RuleEngine(
     securityOptions);
 
 // Validate all environments
-var allResults = ruleEngine.ValidateAllEnvironments("sguard.json");
+var allResults = await ruleEngine.ValidateAllEnvironmentsAsync("sguard.json");
 
 var successCount = allResults.ValidationResults.Count(r => r.IsValid);
 var failureCount = allResults.ValidationResults.Count - successCount;
@@ -704,7 +636,7 @@ Console.WriteLine($"  ❌ Failed: {failureCount}");
 var environmentsToValidate = new[] { "dev", "stag", "prod" };
 foreach (var envId in environmentsToValidate)
 {
-    var result = ruleEngine.ValidateEnvironment("sguard.json", envId);
+    var result = await ruleEngine.ValidateEnvironmentAsync("sguard.json", envId);
     Console.WriteLine($"Environment '{envId}': {(result.IsSuccess && !result.HasValidationErrors ? "✅ Pass" : "❌ Fail")}");
 }
 ```
@@ -725,9 +657,6 @@ on:
 jobs:
   validate-config:
     runs-on: ubuntu-latest
-    env:
-      WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - uses: actions/checkout@v3
       
@@ -741,13 +670,11 @@ jobs:
       
       - name: Validate configuration
         run: |
-          dotnet run --project SGuard.ConfigChecker.Console -- validate --all --output json > validation-results.json
-          # Hooks configured in sguard.json will execute automatically after validation
-          # (e.g., Slack notifications, webhooks, deployment scripts)
+          dotnet run --project SGuard.ConfigValidation.Console -- validate --all --output json > validation-results.json
       
       - name: Check validation results
         run: |
-          if grep -q '"hasValidationErrors":true' validation-results.json; then
+          if grep -q '"HasValidationErrors":true' validation-results.json; then
             echo "❌ Configuration validation failed!"
             cat validation-results.json
             exit 1
@@ -768,12 +695,6 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
-variables:
-  - name: WEBHOOK_TOKEN
-    value: $(WEBHOOK_TOKEN)
-  - name: SLACK_WEBHOOK_URL
-    value: $(SLACK_WEBHOOK_URL)
-
 steps:
   - task: UseDotNet@2
     inputs:
@@ -789,14 +710,9 @@ steps:
     displayName: 'Validate configuration'
     inputs:
       command: 'run'
-      projects: 'SGuard.ConfigChecker.Console/SGuard.ConfigChecker.Console.csproj'
+      projects: 'SGuard.ConfigValidation.Console/SGuard.ConfigValidation.Console.csproj'
       arguments: '-- validate --all --output json'
     continueOnError: false
-    env:
-      WEBHOOK_TOKEN: $(WEBHOOK_TOKEN)
-      SLACK_WEBHOOK_URL: $(SLACK_WEBHOOK_URL)
-    # Hooks configured in sguard.json will execute automatically after validation
-    # (e.g., Slack notifications, webhooks, deployment scripts)
 ```
 
 ## 📊 Output Formats
@@ -826,16 +742,16 @@ steps:
 
 ```json
 {
-  "success": true,
-  "errorMessage": "",
-  "hasValidationErrors": false,
-  "results": [
+  "Success": true,
+  "ErrorMessage": "",
+  "HasValidationErrors": false,
+  "Results": [
     {
-      "path": "appsettings.Development.json",
-      "isValid": true,
-      "errorCount": 0,
-      "results": [...],
-      "errors": []
+      "Path": "appsettings.Development.json",
+      "IsValid": true,
+      "ErrorCount": 0,
+      "Results": [...],
+      "Errors": []
     }
   ]
 }
@@ -889,7 +805,7 @@ await jsonFileFormatter.FormatAsync(result);
 
 ## 🔒 Security Configuration
 
-SGuard.ConfigChecker includes built-in security limits to prevent DoS (Denial of Service) attacks. These limits can be configured via `appsettings.json` or environment variables.
+SGuard.ConfigValidation includes built-in security limits to prevent DoS (Denial of Service) attacks. These limits can be configured via `appsettings.json` or environment variables.
 
 ### Default Security Limits
 
@@ -903,6 +819,8 @@ SGuard.ConfigChecker includes built-in security limits to prevent DoS (Denial of
 | `MaxPathCacheSize` | 10000 | 100000 | Maximum number of entries in the path resolver cache |
 | `MaxPathLength` | 4096 | 16384 | Maximum length for a single path string (characters) |
 | `MaxJsonDepth` | 64 | 256 | Maximum depth for nested JSON/YAML structures |
+| `MaxParallelEnvironments` | Environment.ProcessorCount | 100 | Maximum number of environments that can be validated in parallel |
+| `StreamingThresholdBytes` | 524288 (512 KB) | 10485760 (10 MB) | File size threshold for using streaming when loading app settings |
 
 **Note:** Hard limits are absolute maximums that cannot be exceeded even if configured higher. If a configuration value exceeds the hard limit, it will be automatically clamped to the hard limit and a warning will be logged.
 
@@ -920,7 +838,9 @@ Add a `Security` section to your `appsettings.json`:
     "MaxValidatorsPerCondition": 100,
     "MaxPathCacheSize": 10000,
     "MaxPathLength": 4096,
-    "MaxJsonDepth": 64
+    "MaxJsonDepth": 64,
+    "MaxParallelEnvironments": 4,
+    "StreamingThresholdBytes": 524288
   }
 }
 ```
@@ -946,190 +866,6 @@ set Security__MaxEnvironmentsCount=2000
 - **DoS Protection**: Resource limits prevent memory exhaustion and excessive processing
 - **Cache Poisoning Protection**: Sanitizes cache keys to prevent injection attacks
 
-## 🎣 Post-Validation Hooks
-
-SGuard.ConfigChecker supports post-validation hooks that execute automatically after validation completes. Hooks are executed asynchronously and non-blocking - failures do not affect validation results or exit codes.
-
-### Overview
-
-Hooks allow you to:
-- Execute scripts (bash, PowerShell, etc.) after validation
-- Send HTTP webhook requests to external services
-- Trigger custom actions based on validation results
-
-Hooks are configured in your `sguard.json` file and support:
-- **Global hooks**: Run for all environments
-- **Environment-specific hooks**: Run only for specific environments (higher priority)
-- **Template variables**: Dynamic values like `{{status}}`, `{{environment}}`, `{{errorCount}}`, etc.
-
-### Hook Types
-
-#### 1. Script Hook
-
-Execute scripts or commands after validation.
-
-**Configuration:**
-```json
-{
-  "type": "script",
-  "command": "./scripts/deploy.sh",
-  "arguments": ["--env", "{{environment}}", "--version", "1.0"],
-  "workingDirectory": "/app/scripts",
-  "environmentVariables": {
-    "DEPLOY_ENV": "{{environment}}",
-    "API_KEY": "${API_KEY}"
-  },
-  "timeout": 30000
-}
-```
-
-**Parameters:**
-- `command` (string, **required**): Script command or path to execute
-- `arguments` (array, **optional**): Arguments to pass to the script. Supports template variables.
-- `workingDirectory` (string, **optional**): Working directory for script execution
-- `environmentVariables` (object, **optional**): Environment variables to set. Supports template variables and `${ENV_VAR}` syntax for system environment variables.
-- `timeout` (number, **optional**): Timeout in milliseconds (default: 30000)
-
-#### 2. Webhook Hook
-
-Send HTTP requests to external webhooks.
-
-**Configuration:**
-```json
-{
-  "type": "webhook",
-  "url": "https://api.example.com/webhook",
-  "method": "POST",
-  "headers": {
-    "Authorization": "Bearer ${WEBHOOK_TOKEN}",
-    "Content-Type": "application/json",
-    "X-Custom-Header": "value"
-  },
-  "body": {
-    "status": "{{status}}",
-    "environment": "{{environment}}",
-    "errorCount": "{{errorCount}}",
-    "errors": "{{errors}}"
-  },
-  "timeout": 10000
-}
-```
-
-**Parameters:**
-- `url` (string, **required**): Webhook URL. Supports template variables.
-- `method` (string, **optional**): HTTP method (default: "POST")
-- `headers` (object, **optional**): HTTP headers. Supports template variables and `${ENV_VAR}` syntax.
-- `body` (object, **optional**): Request body. Can be a JSON object or template string. Supports template variables.
-- `timeout` (number, **optional**): Timeout in milliseconds (default: 10000)
-
-### Template Variables
-
-Hooks support template variables that are resolved at runtime based on validation results:
-
-- `{{status}}` - "success" or "failure"
-- `{{environment}}` - Environment ID (or "all" if validating all environments)
-- `{{errorCount}}` - Number of validation errors
-- `{{errors}}` - JSON array of error details
-- `{{results}}` - JSON array of validation results
-- `{{statusColor}}` - "good" (green) or "danger" (red)
-
-**Example:**
-```json
-{
-  "type": "webhook",
-  "url": "https://api.example.com/webhook",
-  "body": {
-    "message": "Validation {{status}} for {{environment}}",
-    "errors": "{{errors}}",
-    "errorCount": "{{errorCount}}"
-  }
-}
-```
-
-### Environment-Specific Hooks
-
-Environment-specific hooks take priority over global hooks. If both are configured, environment-specific hooks run first.
-
-**Example:**
-```json
-{
-  "hooks": {
-    "global": {
-      "onSuccess": [
-        {
-          "type": "webhook",
-          "url": "https://api.example.com/webhook/global"
-        }
-      ]
-    },
-    "environments": {
-      "prod": {
-        "onSuccess": [
-          {
-            "type": "script",
-            "command": "./scripts/deploy-prod.sh"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-In this example, when validating the "prod" environment:
-1. First, the production-specific script hook runs
-2. Then, the global webhook runs
-
-### Hook Execution Flow
-
-```
-Validation Complete
-  ↓
-Determine Exit Code (Success/Failure)
-  ↓
-Load Hooks Configuration
-  ↓
-Execute Environment-Specific Hooks (if applicable)
-  ↓
-Execute Global Hooks
-  ↓
-Return Exit Code (hooks don't affect exit code)
-```
-
-### Error Handling
-
-- **Hook failures are non-blocking**: If a hook fails, it is logged but does not affect validation results or exit codes
-- **Timeout handling**: Scripts and webhooks respect timeout settings. If a timeout occurs, the hook is logged as failed but validation continues
-- **Parallel execution**: Multiple hooks execute in parallel for better performance
-
-### Best Practices
-
-1. **Use environment variables for secrets**: Use `${ENV_VAR}` syntax for sensitive values like API keys
-2. **Set appropriate timeouts**: Script hooks default to 30 seconds, webhooks to 10 seconds. Adjust based on your needs
-3. **Test hooks separately**: Test your hooks independently before integrating them into validation
-4. **Monitor hook execution**: Check logs to ensure hooks are executing correctly
-5. **Use template variables**: Leverage template variables for dynamic content instead of hardcoding values
-
-### Custom Hooks
-
-You can create custom hooks by implementing the `IHook` interface:
-
-```csharp
-using SGuard.ConfigValidation.Hooks;
-
-public class MyCustomHook : IHook
-{
-    public async Task ExecuteAsync(HookContext context, CancellationToken cancellationToken = default)
-    {
-        // Your custom logic here
-        var status = context.TemplateResolver.GetVariable("status");
-        // ...
-    }
-}
-```
-
-Register your custom hook in `HookFactory` or use the factory pattern to create hooks from configuration.
-
 ## 🧪 Testing
 
 Run tests with:
@@ -1137,6 +873,30 @@ Run tests with:
 ```bash
 dotnet test
 ```
+
+### Test Coverage
+
+The project maintains comprehensive test coverage across all supported .NET frameworks. Coverage reports are generated automatically in the CI/CD pipeline.
+
+#### Coverage Summary
+
+| Framework | Line Coverage | Branch Coverage |
+|-----------|---------------|-----------------|
+| .NET 8.0  | ~85%+         | ~80%+           |
+| .NET 9.0  | ~85%+         | ~80%+           |
+| .NET 10.0 | ~85%+         | ~80%+           |
+
+*Coverage percentages are approximate and may vary. Detailed coverage reports are available in CI/CD artifacts.*
+
+#### Running Tests with Coverage
+
+To generate coverage reports locally:
+
+```bash
+dotnet test --collect:"XPlat Code Coverage" --results-directory:"./TestResults"
+```
+
+Coverage reports will be generated in the `TestResults` directory in Cobertura XML format.
 
 ### Performance Benchmarks
 
@@ -1199,7 +959,7 @@ services.AddSGuardConfigValidation();
 var serviceProvider = services.BuildServiceProvider();
 var ruleEngine = serviceProvider.GetRequiredService<IRuleEngine>();
 
-var result = ruleEngine.ValidateEnvironment("sguard.json", "prod");
+var result = await ruleEngine.ValidateEnvironmentAsync("sguard.json", "prod");
 ```
 
 ### Use Cases
@@ -1226,7 +986,7 @@ var app = builder.Build();
 // Validate configurations at startup
 var ruleEngine = app.Services.GetRequiredService<IRuleEngine>();
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
-var result = ruleEngine.ValidateAllEnvironments("sguard.json");
+var result = await ruleEngine.ValidateAllEnvironmentsAsync("sguard.json");
 
 if (!result.IsSuccess || result.HasValidationErrors)
 {
@@ -1284,7 +1044,7 @@ public class ConfigValidationWorker : BackgroundService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var result = _ruleEngine.ValidateAllEnvironments("sguard.json");
+            var result = await _ruleEngine.ValidateAllEnvironmentsAsync("sguard.json", stoppingToken);
             
             if (result.IsSuccess && !result.HasValidationErrors)
             {
@@ -1331,7 +1091,7 @@ public class MyServiceTests
         var fileValidator = new FileValidator(validatorFactory, NullLogger<FileValidator>.Instance);
         var ruleEngine = new RuleEngine(configLoader, fileValidator, validatorFactory, logger, securityOptions);
 
-        var result = ruleEngine.ValidateEnvironment("test-sguard.json", "test-env");
+        var result = await ruleEngine.ValidateEnvironmentAsync("test-sguard.json", "test-env");
         
         Assert.True(result.IsSuccess);
     }
@@ -1358,7 +1118,7 @@ var ruleEngine = serviceProvider.GetRequiredService<IRuleEngine>();
 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
 // Your custom logic here
-var result = ruleEngine.ValidateAllEnvironments("sguard.json");
+var result = await ruleEngine.ValidateAllEnvironmentsAsync("sguard.json");
 
 if (result.IsSuccess && !result.HasValidationErrors)
 {

@@ -3,12 +3,43 @@ using System.Text.Json;
 namespace SGuard.ConfigValidation.Common;
 
 /// <summary>
+/// Internal generic type-safe value wrapper. Provides type-safe access without boxing for value types.
+/// </summary>
+internal sealed class TypedValue<T>
+{
+    private readonly T? _value;
+    private readonly ValueType _valueType;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TypedValue{T}"/> class with the specified value and value type.
+    /// </summary>
+    /// <param name="value">The value to wrap.</param>
+    /// <param name="valueType">The type of the value.</param>
+    internal TypedValue(T? value, ValueType valueType)
+    {
+        _value = value;
+        _valueType = valueType;
+    }
+
+    /// <summary>
+    /// Gets the type of the value.
+    /// </summary>
+    internal ValueType Type => _valueType;
+
+    /// <summary>
+    /// Gets the value directly without boxing.
+    /// </summary>
+    internal T? Value => _value;
+}
+
+/// <summary>
 /// Type-safe value wrapper. Provides type-safe access for ValidatorCondition.Value.
 /// </summary>
 public sealed class TypedValue
 {
-    private readonly object? _value;
+    private readonly object? _wrappedValue;
     private readonly ValueType _valueType;
+    private readonly bool _isGeneric;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TypedValue"/> class with the specified value and value type.
@@ -16,9 +47,21 @@ public sealed class TypedValue
     /// <param name="value">The value to wrap.</param>
     /// <param name="valueType">The type of the value.</param>
     private TypedValue(object? value, ValueType valueType)
+        : this(value, valueType, false)
     {
-        _value = value;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TypedValue"/> class from a generic typed value.
+    /// </summary>
+    /// <param name="typedValue">The generic typed value to wrap.</param>
+    /// <param name="valueType">The type of the value.</param>
+    /// <param name="isGeneric">Indicates whether the value is wrapped in a generic TypedValue instance.</param>
+    private TypedValue(object? typedValue, ValueType valueType, bool isGeneric)
+    {
+        _wrappedValue = typedValue;
         _valueType = valueType;
+        _isGeneric = isGeneric;
     }
 
     /// <summary>
@@ -32,17 +75,54 @@ public sealed class TypedValue
     /// <returns>The string representation of the value, or null if not applicable.</returns>
     public string? AsString()
     {
+        if (_isGeneric)
+        {
+            return _valueType switch
+            {
+                ValueType.String => GetGenericValue<string>()?.ToString(),
+                ValueType.Number => GetGenericNumericAsString(),
+                ValueType.Boolean => GetGenericValue<bool>().ToString(),
+                ValueType.Null => null,
+                _ => _wrappedValue?.ToString()
+            };
+        }
+
         return _valueType switch
         {
-            ValueType.String      => _value as string,
-            ValueType.Number      => _value?.ToString(),
-            ValueType.Boolean     => _value?.ToString(),
+            ValueType.String      => _wrappedValue as string,
+            ValueType.Number      => _wrappedValue?.ToString(),
+            ValueType.Boolean     => _wrappedValue?.ToString(),
             ValueType.Null        => null,
-            ValueType.Array       => _value?.ToString(),
-            ValueType.Object      => _value?.ToString(),
+            ValueType.Array       => _wrappedValue?.ToString(),
+            ValueType.Object      => _wrappedValue?.ToString(),
             ValueType.JsonElement => ExtractStringFromJsonElement(),
-            _                     => _value?.ToString()
+            _                     => _wrappedValue?.ToString()
         };
+    }
+
+    private string? GetGenericNumericAsString()
+    {
+        return _wrappedValue switch
+        {
+            TypedValue<int> tv => tv.Value.ToString(),
+            TypedValue<long> tv => tv.Value.ToString(),
+            TypedValue<short> tv => tv.Value.ToString(),
+            TypedValue<byte> tv => tv.Value.ToString(),
+            TypedValue<float> tv => tv.Value.ToString(),
+            TypedValue<double> tv => tv.Value.ToString(),
+            TypedValue<decimal> tv => tv.Value.ToString(),
+            _ => _wrappedValue?.ToString()
+        };
+    }
+
+    private T? GetGenericValue<T>()
+    {
+        if (_wrappedValue is TypedValue<T> tv)
+        {
+            return tv.Value;
+        }
+
+        return default;
     }
 
     /// <summary>
@@ -61,15 +141,54 @@ public sealed class TypedValue
     {
         numericValue = 0;
 
-        if (_value == null) return false;
+        if (_isGeneric && _valueType == ValueType.Number)
+        {
+            return _wrappedValue switch
+            {
+                TypedValue<int> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<long> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<short> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<byte> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<float> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<double> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                TypedValue<decimal> tv => TryConvertNumericToDouble(tv.Value, out numericValue),
+                _ => false
+            };
+        }
+
+        if (_isGeneric && _valueType == ValueType.String)
+        {
+            if (_wrappedValue is TypedValue<string> tv)
+            {
+                return double.TryParse(tv.Value, out numericValue);
+            }
+        }
+
+        if (_wrappedValue == null) return false;
 
         return _valueType switch
         {
-            ValueType.Number      => TryConvertToDouble(_value, out numericValue),
+            ValueType.Number      => TryConvertToDouble(_wrappedValue, out numericValue),
             ValueType.JsonElement => TryExtractNumericFromJsonElement(out numericValue),
-            ValueType.String      => double.TryParse(_value.ToString(), out numericValue),
+            ValueType.String      => double.TryParse(_wrappedValue.ToString(), out numericValue),
             _                     => false
         };
+    }
+
+    private static bool TryConvertNumericToDouble<T>(T value, out double result) where T : struct
+    {
+        result = value switch
+        {
+            int i => i,
+            long l => l,
+            short s => s,
+            byte b => b,
+            float f => f,
+            double d => d,
+            decimal dec => (double)dec,
+            _ => 0
+        };
+        return true;
     }
 
     /// <summary>
@@ -88,14 +207,58 @@ public sealed class TypedValue
     {
         intValue = 0;
 
-        if (_value == null) return false;
+        if (_isGeneric && _valueType == ValueType.Number)
+        {
+            return _wrappedValue switch
+            {
+                TypedValue<int> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<long> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<short> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<byte> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<float> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<double> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                TypedValue<decimal> tv => TryConvertNumericToInt32(tv.Value, out intValue),
+                _ => false
+            };
+        }
+
+        if (_isGeneric && _valueType == ValueType.String)
+        {
+            if (_wrappedValue is TypedValue<string> tv)
+            {
+                return int.TryParse(tv.Value, out intValue);
+            }
+        }
+
+        if (_wrappedValue == null) return false;
 
         return _valueType switch
         {
-            ValueType.Number      => TryConvertToInt32(_value, out intValue),
+            ValueType.Number      => TryConvertToInt32(_wrappedValue, out intValue),
             ValueType.JsonElement => TryExtractInt32FromJsonElement(out intValue),
-            ValueType.String      => int.TryParse(_value.ToString(), out intValue),
+            ValueType.String      => int.TryParse(_wrappedValue.ToString(), out intValue),
             _                     => false
+        };
+    }
+
+    private static bool TryConvertNumericToInt32<T>(T value, out int result) where T : struct
+    {
+        result = value switch
+        {
+            int i => i,
+            short s => s,
+            byte b => b,
+            long l and >= int.MinValue and <= int.MaxValue => (int)l,
+            _ => 0
+        };
+
+        return value switch
+        {
+            int => true,
+            short => true,
+            byte => true,
+            long l => l >= int.MinValue && l <= int.MaxValue,
+            _ => false
         };
     }
 
@@ -110,9 +273,9 @@ public sealed class TypedValue
     {
         arrayValue = [];
 
-        if (_value == null) return false;
+        if (_wrappedValue == null) return false;
 
-        if (_valueType == ValueType.JsonElement && _value is System.Text.Json.JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
+        if (_valueType == ValueType.JsonElement && _wrappedValue is System.Text.Json.JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
         {
             var list = new List<string>();
 
@@ -125,13 +288,108 @@ public sealed class TypedValue
             return true;
         }
 
-        if (_value is not string[] strArray)
+        if (_wrappedValue is not string[] strArray)
         {
             return false;
         }
 
         arrayValue = strArray;
         return true;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from an integer value without boxing.
+    /// </summary>
+    /// <param name="value">The integer value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(int value)
+    {
+        return new TypedValue(new TypedValue<int>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a long value without boxing.
+    /// </summary>
+    /// <param name="value">The long value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(long value)
+    {
+        return new TypedValue(new TypedValue<long>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a short value without boxing.
+    /// </summary>
+    /// <param name="value">The short value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(short value)
+    {
+        return new TypedValue(new TypedValue<short>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a byte value without boxing.
+    /// </summary>
+    /// <param name="value">The byte value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(byte value)
+    {
+        return new TypedValue(new TypedValue<byte>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a float value without boxing.
+    /// </summary>
+    /// <param name="value">The float value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(float value)
+    {
+        return new TypedValue(new TypedValue<float>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a double value without boxing.
+    /// </summary>
+    /// <param name="value">The double value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(double value)
+    {
+        return new TypedValue(new TypedValue<double>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a decimal value without boxing.
+    /// </summary>
+    /// <param name="value">The decimal value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Number</c>.</returns>
+    public static TypedValue From(decimal value)
+    {
+        return new TypedValue(new TypedValue<decimal>(value, ValueType.Number), ValueType.Number, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a string value.
+    /// </summary>
+    /// <param name="value">The string value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>String</c>.</returns>
+    public static TypedValue From(string? value)
+    {
+        if (value == null)
+        {
+            return new TypedValue(null, ValueType.Null, false);
+        }
+
+        return new TypedValue(new TypedValue<string>(value, ValueType.String), ValueType.String, true);
+    }
+
+    /// <summary>
+    /// Creates a <see cref="TypedValue"/> instance from a boolean value without boxing.
+    /// </summary>
+    /// <param name="value">The boolean value to wrap.</param>
+    /// <returns>A <see cref="TypedValue"/> instance of type <c>Boolean</c>.</returns>
+    public static TypedValue From(bool value)
+    {
+        return new TypedValue(new TypedValue<bool>(value, ValueType.Boolean), ValueType.Boolean, true);
     }
 
     /// <summary>
@@ -163,10 +421,16 @@ public sealed class TypedValue
                 ValueKind: JsonValueKind.String or JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False or JsonValueKind.Array
                            or JsonValueKind.Object
             } => new TypedValue(value, ValueType.JsonElement),
-            int or long or short or byte or float or double or decimal => new TypedValue(value, ValueType.Number),
-            string                                                     => new TypedValue(value, ValueType.String),
-            bool                                                       => new TypedValue(value, ValueType.Boolean),
-            _                                                          => new TypedValue(value, ValueType.Unknown)
+            int i => From(i),
+            long l => From(l),
+            short s => From(s),
+            byte b => From(b),
+            float f => From(f),
+            double d => From(d),
+            decimal dec => From(dec),
+            string str => From(str),
+            bool bl => From(bl),
+            _ => new TypedValue(value, ValueType.Unknown)
         };
     }
 
@@ -182,7 +446,7 @@ public sealed class TypedValue
     /// <returns>The string representation, or null if not applicable.</returns>
     private string? ExtractStringFromJsonElement()
     {
-        if (_value is not System.Text.Json.JsonElement element)
+        if (_wrappedValue is not System.Text.Json.JsonElement element)
         {
             return null;
         }
@@ -208,7 +472,7 @@ public sealed class TypedValue
     {
         numericValue = 0;
 
-        if (_value is not System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element)
+        if (_wrappedValue is not System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element)
         {
             return false;
         }
@@ -229,7 +493,7 @@ public sealed class TypedValue
 
     /// <summary>
     /// Attempts to extract an <c>int</c> value from the underlying <see cref="System.Text.Json.JsonElement"/>.
-    /// Only succeeds if the element is of <see cref="JsonValueKind.Number"/>.
+    /// Supports both <see cref="JsonValueKind.Number"/> and <see cref="JsonValueKind.String"/> (if the string can be parsed as an integer).
     /// </summary>
     /// <param name="intValue">When this method returns, contains the extracted integer value if successful; otherwise, <c>0</c>.</param>
     /// <returns><c>true</c> if extraction succeeds; otherwise, <c>false</c>.</returns>
@@ -237,12 +501,17 @@ public sealed class TypedValue
     {
         intValue = 0;
 
-        if (_value is System.Text.Json.JsonElement { ValueKind: JsonValueKind.Number } element)
+        if (_wrappedValue is not System.Text.Json.JsonElement element)
         {
-            return element.TryGetInt32(out intValue);
+            return false;
         }
 
-        return false;
+        return element.ValueKind switch
+        {
+            JsonValueKind.Number => element.TryGetInt32(out intValue),
+            JsonValueKind.String when int.TryParse(element.GetString(), out intValue) => true,
+            _ => false
+        };
     }
 
     /// <summary>
