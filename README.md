@@ -1,5 +1,7 @@
 # SGuard.ConfigValidation
 
+[![NuGet Version](https://img.shields.io/nuget/v/SGuard.ConfigValidation.svg)](https://www.nuget.org/packages/SGuard.ConfigValidation/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/SGuard.ConfigValidation.svg)](https://www.nuget.org/packages/SGuard.ConfigValidation/)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
