@@ -8,7 +8,7 @@ using SGuard.ConfigValidation.Output;
 using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Services.Abstract;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 using SGuard.ConfigValidation.Validators;
 using SGuard.ConfigValidation.Validators.Plugin;
 using FileValidator = SGuard.ConfigValidation.Services.FileValidator;

@@ -1,8 +1,9 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using SGuard.ConfigValidation.Utilities;
 using SGuard.ConfigValidation.Validators.Plugin;
-using SGuard.ConfigValidation.Utils;
+
 
 namespace SGuard.ConfigValidation.Test;
 

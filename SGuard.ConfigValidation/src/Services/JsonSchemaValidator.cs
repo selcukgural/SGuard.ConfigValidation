@@ -8,7 +8,7 @@ using NJsonSchema.Validation;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Results;
 using SGuard.ConfigValidation.Services.Abstract;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 
 namespace SGuard.ConfigValidation.Services;
 

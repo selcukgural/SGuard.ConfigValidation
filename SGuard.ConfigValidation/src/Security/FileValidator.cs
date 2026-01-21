@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Common;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 
 namespace SGuard.ConfigValidation.Security;
 

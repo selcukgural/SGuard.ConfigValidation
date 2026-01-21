@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using SGuard.ConfigValidation.Output;
 using SGuard.ConfigValidation.Results;
 using System.Text;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 
 namespace SGuard.ConfigValidation.Test;
 

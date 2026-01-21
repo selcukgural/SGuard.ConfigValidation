@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using SGuard.ConfigValidation.Common;
 using SGuard.ConfigValidation.Resources;
 
-namespace SGuard.ConfigValidation.Utils;
+namespace SGuard.ConfigValidation.Utilities;
 
 public static class DirectoryUtility
 {

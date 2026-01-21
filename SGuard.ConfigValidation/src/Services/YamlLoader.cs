@@ -8,7 +8,7 @@ using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 using static SGuard.ConfigValidation.Common.Throw;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;

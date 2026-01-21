@@ -2,7 +2,7 @@ using System.Text.Json;
 using SGuard.ConfigValidation.Resources;
 using static SGuard.ConfigValidation.Common.Throw;
 
-namespace SGuard.ConfigValidation.Utils;
+namespace SGuard.ConfigValidation.Utilities;
 
 /// <summary>
 /// Helper class for converting JsonElement and other types to int32.

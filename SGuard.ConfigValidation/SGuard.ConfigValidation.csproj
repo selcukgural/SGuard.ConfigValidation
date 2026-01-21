@@ -5,15 +5,18 @@
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Version>0.0.1</Version>
-        <AssemblyVersion>0.0.1</AssemblyVersion>
-        <FileVersion>0.0.1</FileVersion>
-        <Authors>SGuard Contributors</Authors>
+        <Version>0.1.0</Version>
+        <AssemblyVersion>0.1.0</AssemblyVersion>
+        <FileVersion>0.1.0</FileVersion>
+        <Authors>Selçuk Güral</Authors>
+        <Company>Selçuk Güral</Company>
+        <Copyright>© 2024-2026 Selçuk Güral</Copyright>
         <Description>A lightweight library to catch critical configuration issues before runtime. Supports JSON and YAML configuration files with validation rules.</Description>
-        <!-- TODO: Replace with actual repository URL before publishing -->
-        <PackageProjectUrl>https://github.com/sguard/SGuard.ConfigValidation</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/sguard/SGuard.ConfigValidation</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/selcukgural/SGuard.ConfigValidation</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/selcukgural/SGuard.ConfigValidation</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReleaseNotes>https://github.com/selcukgural/SGuard.ConfigValidation/blob/main/RELEASE_NOTES.md</PackageReleaseNotes>
         <PackageTags>configuration;validation;config-checker;yaml;json;validation-rules</PackageTags>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>

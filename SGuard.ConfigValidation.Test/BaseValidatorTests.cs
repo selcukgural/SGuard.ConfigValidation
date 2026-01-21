@@ -1,6 +1,4 @@
 using FluentAssertions;
-using SGuard.ConfigValidation.Common;
-using SGuard.ConfigValidation.Models;
 using SGuard.ConfigValidation.Results;
 using SGuard.ConfigValidation.Validators;
 using SGuard.ConfigValidation.Validators.Base;

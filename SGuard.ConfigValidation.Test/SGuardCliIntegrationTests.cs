@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 using SGuard.ConfigValidation.Validators;
 using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 

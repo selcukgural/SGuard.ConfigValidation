@@ -44,7 +44,7 @@ This repository contains multiple projects:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/SGuard.ConfigValidation.git
+git clone https://github.com/selcukgural/SGuard.ConfigValidation.git
 cd SGuard.ConfigValidation
 
 # Run validation

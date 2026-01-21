@@ -10,7 +10,7 @@ using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services.Abstract;
 using SGuard.ConfigValidation.Telemetry;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 using SGuard.ConfigValidation.Validators;
 using static SGuard.ConfigValidation.Common.Throw;
 using JsonElement = System.Text.Json.JsonElement;

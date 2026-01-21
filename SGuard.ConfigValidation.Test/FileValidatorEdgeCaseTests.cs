@@ -1,8 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using SGuard.ConfigValidation.Models;
-using SGuard.ConfigValidation.Results;
-using SGuard.ConfigValidation.Services;
 using SGuard.ConfigValidation.Validators;
 using FileValidator = SGuard.ConfigValidation.Services.FileValidator;
 

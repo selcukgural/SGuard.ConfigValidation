@@ -2,7 +2,7 @@ using SGuard.ConfigValidation.Resources;
 using SGuard.ConfigValidation.Security;
 using static SGuard.ConfigValidation.Common.Throw;
 
-namespace SGuard.ConfigValidation.Utils;
+namespace SGuard.ConfigValidation.Utilities;
 
 /// <summary>
 /// Helper class for safe cross-platform file and directory operations.

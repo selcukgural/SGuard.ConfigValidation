@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics.Metrics;
 using FluentAssertions;
 using SGuard.ConfigValidation.Telemetry;
 

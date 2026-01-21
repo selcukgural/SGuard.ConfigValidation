@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using SGuard.ConfigValidation.Exceptions;
 using SGuard.ConfigValidation.Security;
 using SGuard.ConfigValidation.Services;
-using SGuard.ConfigValidation.Utils;
+using SGuard.ConfigValidation.Utilities;
 
 namespace SGuard.ConfigValidation.Test;
 

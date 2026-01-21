@@ -1,6 +1,5 @@
 using FluentAssertions;
-using SGuard.ConfigValidation.Utils;
-using System.IO;
+using SGuard.ConfigValidation.Utilities;
 
 namespace SGuard.ConfigValidation.Test;
 
