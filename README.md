@@ -4,8 +4,18 @@
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SGuard.ConfigValidation.svg)](https://www.nuget.org/packages/SGuard.ConfigValidation/)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-online-green.svg)](https://selcukgural.github.io/SGuard.ConfigValidation/)
 
 A lightweight, production-ready tool to catch critical configuration issues **before runtime**. Validate your configuration files during application startup or in your CI/CD pipeline.
+
+## 📚 Documentation
+
+**📖 [View Full Documentation](https://selcukgural.github.io/SGuard.ConfigValidation/)**
+
+Quick links:
+- [Getting Started](https://selcukgural.github.io/SGuard.ConfigValidation/docs/getting-started/installation)
+- [API Reference](https://selcukgural.github.io/SGuard.ConfigValidation/docs/api/validators)
+- [Examples](https://selcukgural.github.io/SGuard.ConfigValidation/docs/examples/connection-strings)
 
 ## ✨ Why SGuard.ConfigValidation?
 
